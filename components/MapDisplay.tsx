@@ -6,20 +6,24 @@ import { encode } from '../utils/polyline';
 
 interface MapDisplayProps {
   segments: Segment[];
-  lastPole: Coordinates | null;
+  initialPole: Coordinates | null | undefined;
 }
 
 const API_KEY = process.env.API_KEY;
 
-export const MapDisplay: React.FC<MapDisplayProps> = ({ segments, lastPole }) => {
+export const MapDisplay: React.FC<MapDisplayProps> = ({ segments, initialPole }) => {
   const { t } = useTranslations();
   const poles: Coordinates[] = [];
-  if (segments.length > 0) {
-    poles.push(segments[0].start);
-    segments.forEach(seg => poles.push(seg.end));
-  } else if (lastPole) {
-    poles.push(lastPole);
+  if (initialPole) {
+    poles.push(initialPole);
   }
+  segments.forEach(seg => {
+    if (poles.length === 0) { // Should not happen if initialPole logic is right, but as a fallback
+        poles.push(seg.start);
+    }
+    poles.push(seg.end)
+  });
+
 
   if (poles.length === 0) {
     return (
@@ -33,7 +37,7 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ segments, lastPole }) =>
   const markers = poles.map((pole, index) => `&markers=color:red%7Clabel:${index + 1}%7C${pole.lat},${pole.lon}`).join('');
   
   const encodedPolyline = encode(poles);
-  const pathString = segments.length > 0 ? `&path=color:0x00aaff|weight:4|enc:${encodedPolyline}` : '';
+  const pathString = poles.length > 1 ? `&path=color:0x00aaff|weight:4|enc:${encodedPolyline}` : '';
   
   const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=satellite${pathString}${markers}&key=${API_KEY}`;
   

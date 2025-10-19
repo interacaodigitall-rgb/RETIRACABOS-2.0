@@ -10,6 +10,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, onSnap
 const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
 const SegmentFormModal = lazy(() => import('./components/SegmentFormModal'));
 const StartJobModal = lazy(() => import('./components/StartJobModal'));
+const EndJobModal = lazy(() => import('./components/EndJobModal'));
 
 const Header: React.FC<{ user: User | null; onLogout: () => void; onBack: () => void; showBackButton: boolean }> = ({ user, onLogout, onBack, showBackButton }) => {
   const { t } = useTranslations();
@@ -94,6 +95,9 @@ const AuthComponent: React.FC = () => {
 
 const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, onNew: () => void }> = ({ jobs, onSelect, onNew }) => {
     const { t } = useTranslations();
+    const activeJobs = jobs.filter(j => j.status === 'ativo');
+    const completedJobs = jobs.filter(j => j.status === 'concluido');
+
     return (
         <div className="max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -102,19 +106,45 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
                     {t('startNewJob')}
                 </button>
             </div>
-            {jobs.length > 0 ? (
-                <div className="space-y-4">
-                    {jobs.map(job => (
-                        <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors">
-                            <h3 className="text-xl font-bold text-white truncate" title={job.nome}>{job.nome}</h3>
-                            <p className="text-gray-400">ID: {job.id}</p>
-                            <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
-                            <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
+
+            <div className="space-y-8">
+                <div>
+                    <h3 className="text-2xl font-semibold text-blue-400 border-b-2 border-gray-700 pb-2 mb-4">Ativos</h3>
+                    {activeJobs.length > 0 ? (
+                        <div className="space-y-4">
+                            {activeJobs.map(job => (
+                                <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors">
+                                    <h3 className="text-xl font-bold text-white truncate" title={job.nome}>{job.nome}</h3>
+                                    <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
+                                    <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    ) : (
+                        <p className="text-gray-500">Nenhum trabalho ativo.</p>
+                    )}
                 </div>
-            ) : (
-                <div className="text-center py-10 px-4 border-2 border-dashed border-gray-700 rounded-lg">
+                
+                <div>
+                    <h3 className="text-2xl font-semibold text-gray-500 border-b-2 border-gray-700 pb-2 mb-4">Concluídos</h3>
+                    {completedJobs.length > 0 ? (
+                        <div className="space-y-4">
+                            {completedJobs.map(job => (
+                                <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800/70 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors opacity-80">
+                                    <h3 className="text-xl font-bold text-gray-400 truncate" title={job.nome}>{job.nome}</h3>
+                                    <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
+                                    <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">Nenhum trabalho concluído.</p>
+                    )}
+                </div>
+            </div>
+
+            {jobs.length === 0 && (
+                 <div className="text-center py-10 px-4 border-2 border-dashed border-gray-700 rounded-lg mt-8">
                     <h3 className="text-xl font-semibold text-gray-400">Nenhum trabalho encontrado.</h3>
                     <p className="text-gray-500 mt-2">Clique em "Iniciar Novo Trabalho" para começar.</p>
                 </div>
@@ -235,6 +265,7 @@ function AppContent() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isStartJobModalVisible, setIsStartJobModalVisible] = useState(false);
   const [isAddPoleModalVisible, setIsAddPoleModalVisible] = useState(false);
+  const [isEndJobModalVisible, setIsEndJobModalVisible] = useState(false);
   const [newSegmentData, setNewSegmentData] = useState<Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> | null>(null);
 
   useEffect(() => {
@@ -264,9 +295,6 @@ function AppContent() {
   useEffect(() => {
     if (activeJobId && jobs.length > 0) {
       const job = jobs.find(j => j.id === activeJobId);
-      // Only update if the job is found. This prevents a race condition
-      // where activeJob is set to null because the `jobs` list hasn't
-      // updated with the newly created job yet.
       if (job) {
           setActiveJob(job);
       }
@@ -386,7 +414,10 @@ function AppContent() {
 
       const batch = writeBatch(db);
       batch.set(doc(segmentsRef), segmentToSave);
-      const newTotal = activeJob.totalMetros + newSegmentData.distance;
+
+      const cableLengthForSegment = newSegmentData.distance * formData.quantity;
+      const newTotal = activeJob.totalMetros + cableLengthForSegment;
+      
       batch.update(jobRef, { totalMetros: newTotal });
 
       await batch.commit();
@@ -412,6 +443,15 @@ function AppContent() {
     selectJob(null);
   }, [selectJob]);
 
+  const handleEndJob = useCallback(async () => {
+    if (activeJob) {
+      const jobRef = doc(db, 'trabalhos', activeJob.id);
+      await updateDoc(jobRef, { status: 'concluido' });
+      setIsEndJobModalVisible(false);
+      selectJob(null);
+    }
+  }, [activeJob, selectJob]);
+
   if (authLoading) {
       return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Carregando...</div>
   }
@@ -430,10 +470,11 @@ function AppContent() {
               job={activeJob}
               technicianName={user.displayName || user.email || 'Técnico'}
               onAddPole={() => setIsAddPoleModalVisible(true)}
+              onEndJob={() => setIsEndJobModalVisible(true)}
               segments={segments}
               lastPole={lastPole}
             />
-            <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando relatório...</div>}>
+            <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando...</div>}>
               <ReportGenerator job={activeJob} segments={segments} technicianName={user.displayName || user.email || 'Técnico'} />
             </Suspense>
           </>
@@ -452,6 +493,9 @@ function AppContent() {
             onSave={handleSaveSegment}
             onCancel={handleCancelForm}
           />
+        )}
+        {isEndJobModalVisible && (
+          <EndJobModal onConfirm={handleEndJob} onCancel={() => setIsEndJobModalVisible(false)} />
         )}
       </Suspense>
     </div>

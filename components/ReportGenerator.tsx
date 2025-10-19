@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Segment, Job } from '../types';
-import { generateJobReport, generateRouteAnalysis } from '../services/geminiService';
+import { Segment, Job, Coordinates } from '../types';
 import { useTranslations } from '../contexts/TranslationsContext';
+import { encode } from '../utils/polyline';
 
 interface ReportGeneratorProps {
   segments: Segment[];
@@ -9,84 +9,14 @@ interface ReportGeneratorProps {
   technicianName: string;
 }
 
-const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
-    // A simple markdown to HTML converter
-    const formatText = (text: string) => {
-        let html = text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^- (.*$)/gim, '<li>$1</li>')
-            .replace(/^\d+\. (.*$)/gim, '<li>$1</li>') // Handle ordered lists
-            .replace(/<\/li><li>/g, '</li>\n<li>') // Add newline between list items for regex
-            .replace(/(\n\s*){2,}/g, '<br /><br />') // paragraphs
-            .replace(/\n/g, '<br />');
-
-        // Wrap lists
-        html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>').replace(/<\/ul>\s*<ul>/g, '');
-        
-        return { __html: html };
-    };
-
-  return <div className="prose prose-invert max-w-none text-gray-300" dangerouslySetInnerHTML={formatText(content)} />;
-};
-
-
 const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, technicianName }) => {
   const { t } = useTranslations();
-  const [report, setReport] = useState('');
-  const [isLoadingReport, setIsLoadingReport] = useState(false);
-  const [reportError, setReportError] = useState('');
-
-  const [routeAnalysis, setRouteAnalysis] = useState('');
-  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
-  const [analysisError, setAnalysisError] = useState('');
-
-
-  const handleGenerateReport = async () => {
-    if (segments.length === 0) {
-        setReportError(t('noDataToReport'));
-        setTimeout(() => setReportError(''), 3000);
-        return;
-    }
-    setIsLoadingReport(true);
-    setReportError('');
-    setReport('');
-    try {
-      const result = await generateJobReport(segments, job.nome, technicianName);
-      setReport(result);
-    } catch (err) {
-      setReportError(t('aiError'));
-    } finally {
-      setIsLoadingReport(false);
-    }
-  };
-
-  const handleAnalyzeRoute = async () => {
-    if (segments.length < 2) { // Need at least 3 poles (2 segments) for a meaningful analysis
-        setAnalysisError(t('notEnoughDataForAnalysis'));
-        setTimeout(() => setAnalysisError(''), 4000);
-        return;
-    }
-    setIsLoadingAnalysis(true);
-    setAnalysisError('');
-    setRouteAnalysis('');
-    try {
-      const result = await generateRouteAnalysis(segments);
-      setRouteAnalysis(result);
-    } catch (err) {
-      setAnalysisError(t('routeAnalysisError'));
-    } finally {
-      setIsLoadingAnalysis(false);
-    }
-  };
+  const [error, setError] = useState('');
 
   const handleDownloadCSV = () => {
     if (segments.length === 0 && !job.initialPole) {
-        setReportError(t('noDataToExport'));
-        setTimeout(() => setReportError(''), 3000);
+        setError(t('noDataToExport'));
+        setTimeout(() => setError(''), 3000);
         return;
     }
 
@@ -114,11 +44,26 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, techni
   };
 
   const handleGeneratePdf = () => {
-    const totalDistance = job.totalMetros;
     const reportWindow = window.open('', '_blank');
     if (!reportWindow) {
         alert("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
         return;
+    }
+
+    // Generate Map URL
+    const API_KEY = process.env.API_KEY;
+    const poles: Coordinates[] = [];
+    if (job.initialPole) {
+      poles.push(job.initialPole.coordinates);
+    }
+    segments.forEach(seg => poles.push(seg.end));
+    
+    let mapUrl = '';
+    if (poles.length > 0 && API_KEY) {
+        const markers = poles.map((pole, index) => `&markers=color:red%7Clabel:${index + 1}%7C${pole.lat},${pole.lon}`).join('');
+        const encodedPolyline = encode(poles);
+        const pathString = poles.length > 1 ? `&path=color:0x00aaff|weight:4|enc:${encodedPolyline}` : '';
+        mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x400&maptype=satellite${pathString}${markers}&key=${API_KEY}`;
     }
 
     let segmentsHtml = '';
@@ -133,15 +78,18 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, techni
     }
 
     segments.forEach((seg, index) => {
+        const poleNumber = job.initialPole ? index + 2 : index + 1;
         segmentsHtml += `
             <div class="segment">
-                --- Segmento ${index + 1} &rarr; ${index + 2} ---
+                --- Trecho do Poste ${poleNumber - 1} ao ${poleNumber} ---
             </div>
              <div class="item">
-                <p><strong>Distância:</strong> ${seg.distance.toFixed(2)}m</p>
-                <p><strong>Cabo:</strong> ${seg.cableType} (x${seg.quantity})</p>
-                ${seg.notes ? `<p><strong>Observações do trecho:</strong> <em>${seg.notes}</em></p>` : ''}
-                <h3>Poste ${index + 2}</h3>
+                <p><strong>Distância do Trecho:</strong> ${seg.distance.toFixed(2)}m</p>
+                <p><strong>Tipo de Cabo:</strong> ${seg.cableType}</p>
+                <p><strong>Quantidade de Cabos:</strong> ${seg.quantity}</p>
+                <p><strong>Total de Cabo Removido no Trecho:</strong> ${(seg.distance * seg.quantity).toFixed(2)}m</p>
+                ${seg.notes ? `<p><strong>Observações do Trecho:</strong> <em>${seg.notes}</em></p>` : ''}
+                <h3>Poste ${poleNumber}</h3>
                 <p><strong>Coordenadas:</strong> ${seg.end.lat.toFixed(6)}, ${seg.end.lon.toFixed(6)}</p>
                 ${seg.endPoleNotes ? `<p><strong>Observações do Poste:</strong> <em>${seg.endPoleNotes}</em></p>` : ''}
             </div>
@@ -157,11 +105,16 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, techni
                     body { font-family: sans-serif; margin: 20px; color: #333; }
                     h1, h2, h3 { color: #111; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
                     .header, .summary { margin-bottom: 20px; padding: 10px; background-color: #f4f4f4; border-radius: 5px; }
-                    .item { border: 1px solid #ddd; padding: 10px; margin-top: 15px; border-radius: 5px; }
+                    .item { border: 1px solid #ddd; padding: 10px; margin-top: 15px; border-radius: 5px; page-break-inside: avoid; }
                     .segment { text-align: center; font-weight: bold; color: #555; margin-top: 15px; }
                     p { line-height: 1.6; }
                     strong { color: #000; }
                     em { color: #444; }
+                    img.map { width: 100%; max-width: 700px; margin: 20px auto; display: block; border: 1px solid #ccc; border-radius: 5px; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; }
+                        .no-print { display: none; }
+                    }
                 </style>
             </head>
             <body>
@@ -174,10 +127,12 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, techni
 
                 <div class="summary">
                     <h2>Resumo</h2>
-                    <p><strong>${t('totalRemoved')}:</strong> ${totalDistance.toFixed(2)}m ${totalDistance > 1000 ? `(${(totalDistance/1000).toFixed(2)}km)` : ''}</p>
+                    <p><strong>${t('totalRemoved')}:</strong> ${job.totalMetros.toFixed(2)}m</p>
                 </div>
 
-                <h2>Detalhes</h2>
+                ${mapUrl ? `<h2>Mapa do Trajeto</h2><img src="${mapUrl}" alt="Mapa do Trajeto" class="map" />` : ''}
+
+                <h2>Detalhes dos Segmentos</h2>
                 ${segmentsHtml || '<p>Nenhum poste ou segmento registrado.</p>'}
             </body>
         </html>
@@ -192,21 +147,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, techni
   return (
     <div className="mt-8 bg-gray-800 p-6 rounded-lg shadow-xl">
       <h2 className="text-2xl font-bold text-white mb-4">{t('reportAndExport')}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <button
-          onClick={handleGenerateReport}
-          disabled={isLoadingReport || segments.length === 0}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md flex-1 transition-colors"
-        >
-          {isLoadingReport ? t('generatingReport') : t('generateAiReport')}
-        </button>
-        <button
-          onClick={handleAnalyzeRoute}
-          disabled={isLoadingAnalysis || segments.length < 2}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md flex-1 transition-colors"
-        >
-          {isLoadingAnalysis ? t('analyzingRoute') : t('analyzeRoute')}
-        </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={handleDownloadCSV}
           disabled={!hasData}
@@ -222,21 +163,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, job, techni
           {t('generatePdf')}
         </button>
       </div>
-      {(reportError || analysisError) && <p className="text-red-400 mt-4">{reportError || analysisError}</p>}
-      
-      {report && (
-        <div className="mt-6 p-4 bg-gray-900 rounded-md border border-gray-700">
-          <h3 className="text-xl font-semibold text-white mb-3 border-b border-gray-700 pb-2">{t('aiReportTitle')}</h3>
-          <MarkdownRenderer content={report} />
-        </div>
-      )}
-
-      {routeAnalysis && (
-        <div className="mt-6 p-4 bg-gray-900 rounded-md border border-gray-700">
-          <h3 className="text-xl font-semibold text-white mb-3 border-b border-gray-700 pb-2">{t('routeAnalysisTitle')}</h3>
-          <MarkdownRenderer content={routeAnalysis} />
-        </div>
-      )}
+      {error && <p className="text-red-400 mt-4">{error}</p>}
     </div>
   );
 };

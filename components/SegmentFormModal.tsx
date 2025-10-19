@@ -23,7 +23,13 @@ const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData, onSave
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ cableType, quantity, notes });
+    let finalQuantity = 1;
+    if (cableType === CableType.Double) {
+      finalQuantity = 2;
+    } else if (cableType === CableType.Other) {
+      finalQuantity = quantity;
+    }
+    onSave({ cableType, quantity: finalQuantity, notes });
   };
 
   return (
@@ -47,17 +53,20 @@ const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData, onSave
             </select>
           </div>
 
-          <div>
-            <label htmlFor="quantity" className="block text-sm font-medium text-gray-300 mb-1">{t('quantity')}</label>
-            <input
-              type="number"
-              id="quantity"
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              min="1"
-              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+          {cableType === CableType.Other && (
+            <div>
+              <label htmlFor="quantity" className="block text-sm font-medium text-gray-300 mb-1">{t('quantity')}</label>
+              <input
+                type="number"
+                id="quantity"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                min="1"
+                className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">{t('notes')}</label>
