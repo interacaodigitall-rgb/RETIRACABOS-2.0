@@ -7,7 +7,7 @@ interface StartJobModalProps {
   onCancel: () => void;
 }
 
-export const StartJobModal: React.FC<StartJobModalProps> = ({ onStart, onCancel }) => {
+const StartJobModal: React.FC<StartJobModalProps> = ({ onStart, onCancel }) => {
   const { t } = useTranslations();
   const [jobName, setJobName] = useState(`Trabalho_${new Date().toISOString().slice(0, 10)}`);
   const [technicianName, setTechnicianName] = useState('');
@@ -76,3 +76,5 @@ style.innerHTML = `
 }
 `;
 document.head.appendChild(style);
+
+export default StartJobModal;

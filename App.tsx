@@ -1,16 +1,17 @@
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Segment, Coordinates, CableType, Job } from './types';
 import { calculateDistance } from './utils/geolocation';
 import { JobDashboard } from './components/JobDashboard';
-import { SegmentFormModal } from './components/SegmentFormModal';
-import { ReportGenerator } from './components/ReportGenerator';
 import { TranslationsProvider, useTranslations } from './contexts/TranslationsContext';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { StartJobModal } from './components/StartJobModal';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, onSnapshot, writeBatch, orderBy } from 'firebase/firestore';
+
+const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
+const SegmentFormModal = lazy(() => import('./components/SegmentFormModal'));
+const StartJobModal = lazy(() => import('./components/StartJobModal'));
 
 const Header: React.FC<{ user: User | null; onLogout: () => void; onBack: () => void; showBackButton: boolean }> = ({ user, onLogout, onBack, showBackButton }) => {
   const { t } = useTranslations();
@@ -302,20 +303,24 @@ function AppContent() {
               totalDistance={activeJob.totalMetros}
               lastPole={lastPole}
             />
-            <ReportGenerator segments={segments} jobName={activeJob.nome} technicianName={user.displayName || user.email || 'Técnico'} />
+            <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando relatório...</div>}>
+              <ReportGenerator segments={segments} jobName={activeJob.nome} technicianName={user.displayName || user.email || 'Técnico'} />
+            </Suspense>
           </>
         )}
       </main>
-      {isStartJobModalVisible && (
-        <StartJobModal onStart={handleStartJob} onCancel={() => setIsStartJobModalVisible(false)} />
-      )}
-      {isFormVisible && newSegmentData && (
-        <SegmentFormModal
-          segmentData={newSegmentData}
-          onSave={handleSaveSegment}
-          onCancel={handleCancelForm}
-        />
-      )}
+      <Suspense fallback={null}>
+        {isStartJobModalVisible && (
+          <StartJobModal onStart={handleStartJob} onCancel={() => setIsStartJobModalVisible(false)} />
+        )}
+        {isFormVisible && newSegmentData && (
+          <SegmentFormModal
+            segmentData={newSegmentData}
+            onSave={handleSaveSegment}
+            onCancel={handleCancelForm}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

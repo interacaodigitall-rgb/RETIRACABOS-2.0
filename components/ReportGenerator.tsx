@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Segment } from '../types';
 import { generateJobReport, generateRouteAnalysis } from '../services/geminiService';
@@ -34,7 +35,7 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 
-export const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobName, technicianName }) => {
+const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobName, technicianName }) => {
   const { t, language } = useTranslations();
   const [report, setReport] = useState('');
   const [isLoadingReport, setIsLoadingReport] = useState(false);
@@ -159,3 +160,5 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobN
     </div>
   );
 };
+
+export default ReportGenerator;

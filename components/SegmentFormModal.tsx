@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Segment, CableType } from '../types';
 import { useTranslations } from '../contexts/TranslationsContext';
@@ -8,7 +9,7 @@ interface SegmentFormModalProps {
   onCancel: () => void;
 }
 
-export const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData, onSave, onCancel }) => {
+const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData, onSave, onCancel }) => {
   const { t } = useTranslations();
   const [cableType, setCableType] = useState<CableType>(CableType.Simple);
   const [quantity, setQuantity] = useState(1);
@@ -97,3 +98,5 @@ style.innerHTML = `
 }
 `;
 document.head.appendChild(style);
+
+export default SegmentFormModal;
