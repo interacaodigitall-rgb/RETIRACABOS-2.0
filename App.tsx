@@ -305,6 +305,7 @@ function AppContent() {
   }, [activeJob]);
   
   const selectJob = useCallback((job: Job | null) => {
+    setActiveJob(job);
     if (job) {
       sessionStorage.setItem('activeJobId', job.id);
       setActiveJobId(job.id);
@@ -326,7 +327,7 @@ function AppContent() {
         status: 'ativo' as const,
     };
     const docRef = await addDoc(collection(db, 'trabalhos'), newJobData);
-    selectJob({ ...newJobData, id: docRef.id, dataInicio: { toDate: () => new Date() } });
+    selectJob({ ...newJobData, id: docRef.id, dataInicio: { toDate: () => new Date() } } as Job);
     setIsStartJobModalVisible(false);
   }, [user, selectJob]);
 
