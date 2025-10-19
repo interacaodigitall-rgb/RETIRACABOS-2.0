@@ -127,6 +127,7 @@ function AppContent() {
   const [authLoading, setAuthLoading] = useState(true);
 
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [activeJobId, setActiveJobId] = useState<string | null>(() => sessionStorage.getItem('activeJobId'));
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   
@@ -141,7 +142,8 @@ function AppContent() {
       setAuthLoading(false);
       if (!currentUser) {
         setJobs([]);
-        setActiveJob(null);
+        sessionStorage.removeItem('activeJobId');
+        setActiveJobId(null);
         setSegments([]);
       }
     });
@@ -161,6 +163,15 @@ function AppContent() {
     });
     return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    if (activeJobId && jobs.length > 0) {
+      const job = jobs.find(j => j.id === activeJobId);
+      setActiveJob(job || null);
+    } else {
+      setActiveJob(null);
+    }
+  }, [activeJobId, jobs]);
 
   useEffect(() => {
     if (!activeJob) {
@@ -193,6 +204,16 @@ function AppContent() {
     return () => unsubscribe();
   }, [activeJob]);
   
+  const selectJob = useCallback((job: Job | null) => {
+    if (job) {
+      sessionStorage.setItem('activeJobId', job.id);
+      setActiveJobId(job.id);
+    } else {
+      sessionStorage.removeItem('activeJobId');
+      setActiveJobId(null);
+    }
+  }, []);
+
   const handleStartJob = useCallback(async (data: { jobName: string }) => {
     if (!user) return;
     const newJobData = {
@@ -210,9 +231,9 @@ function AppContent() {
         dataInicio: { toDate: () => new Date() } 
     };
 
-    setActiveJob(tempActiveJob);
+    selectJob(tempActiveJob);
     setIsStartJobModalVisible(false);
-  }, [user]);
+  }, [user, selectJob]);
 
   const handleMarkPole = useCallback((coords: Coordinates) => {
     if (lastPole) {
@@ -270,9 +291,14 @@ function AppContent() {
     setNewSegmentData(null);
   }, [segments]);
 
-  const handleBackToList = () => {
-    setActiveJob(null);
-  }
+  const handleBackToList = useCallback(() => {
+    selectJob(null);
+  }, [selectJob]);
+  
+  const handleLogout = useCallback(() => {
+    auth.signOut();
+    selectJob(null);
+  }, [selectJob]);
 
   if (authLoading) {
       return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Carregando...</div>
@@ -280,12 +306,12 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
-      <Header user={user} onLogout={() => auth.signOut()} onBack={handleBackToList} showBackButton={!!activeJob} />
+      <Header user={user} onLogout={handleLogout} onBack={handleBackToList} showBackButton={!!activeJob} />
       <main className="container mx-auto p-4 md:p-6">
         {!user ? (
             <AuthComponent />
         ) : !activeJob ? (
-            <JobListComponent jobs={jobs} onSelect={setActiveJob} onNew={() => setIsStartJobModalVisible(true)} />
+            <JobListComponent jobs={jobs} onSelect={selectJob} onNew={() => setIsStartJobModalVisible(true)} />
         ) : (
           <>
             <JobDashboard 
