@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Segment, Coordinates, Job } from '../types';
 import { SegmentList } from './SegmentList';
@@ -37,7 +38,7 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName,
                 <p className="text-2xl font-bold text-white truncate" title={technicianName}>{technicianName}</p>
             </div>
         </div>
-        <div className="border-t border-gray-700 pt-4 flex justify-between items-center text-lg text-gray-300">
+        <div className="border-t border-gray-700 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-lg text-gray-300 gap-2">
             <span>{t('totalRemoved')}: 
                 <span className="font-bold text-blue-400 text-xl">
                     {totalDistance.toFixed(2)} {t('meters')}

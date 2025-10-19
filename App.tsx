@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Segment, Coordinates, CableType, Job } from './types';
 import { calculateDistance } from './utils/geolocation';
@@ -100,9 +101,9 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
 
     return (
         <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h2 className="text-3xl font-bold text-white">Meus Trabalhos</h2>
-                <button onClick={onNew} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-lg transition-transform transform hover:scale-105">
+                <button onClick={onNew} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-lg transition-transform transform hover:scale-105 w-full sm:w-auto">
                     {t('startNewJob')}
                 </button>
             </div>
@@ -382,12 +383,10 @@ function AppContent() {
         handleAddSegment(lastPole, coords, notes);
     } else if (activeJob) {
         const jobRef = doc(db, 'trabalhos', activeJob.id);
-        await updateDoc(jobRef, {
-            initialPole: {
-                coordinates: coords,
-                notes: notes,
-            }
-        });
+        const newInitialPole = { coordinates: coords, notes: notes };
+        await updateDoc(jobRef, { initialPole: newInitialPole });
+        // Optimistic update to avoid waiting for listener
+        setActiveJob(prev => prev ? { ...prev, initialPole: newInitialPole } : null);
         setLastPole(coords);
     }
     setIsAddPoleModalVisible(false);
@@ -443,12 +442,16 @@ function AppContent() {
     selectJob(null);
   }, [selectJob]);
 
-  const handleEndJob = useCallback(async () => {
+  const handleEndJob = useCallback(async (action: 'finish' | 'finishAndNew') => {
     if (activeJob) {
       const jobRef = doc(db, 'trabalhos', activeJob.id);
       await updateDoc(jobRef, { status: 'concluido' });
       setIsEndJobModalVisible(false);
       selectJob(null);
+      if (action === 'finishAndNew') {
+        // Use a short timeout to ensure the UI has time to transition
+        setTimeout(() => setIsStartJobModalVisible(true), 100);
+      }
     }
   }, [activeJob, selectJob]);
 

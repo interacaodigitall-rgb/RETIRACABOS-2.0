@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { useTranslations } from '../contexts/TranslationsContext';
 
 interface EndJobModalProps {
-  onConfirm: () => void;
+  onConfirm: (action: 'finish' | 'finishAndNew') => void;
   onCancel: () => void;
 }
 
@@ -14,9 +15,10 @@ const EndJobModal: React.FC<EndJobModalProps> = ({ onConfirm, onCancel }) => {
       <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md animate-fade-in-up">
         <h2 className="text-2xl font-bold text-white mb-4">{t('endJobTitle')}</h2>
         <p className="text-gray-300 mb-6">{t('endJobConfirmation')}</p>
-        <div className="flex justify-end space-x-4">
-          <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md transition-colors">{t('cancel')}</button>
-          <button type="button" onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-md transition-colors">{t('confirmEndJob')}</button>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-4 gap-3">
+          <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md transition-colors w-full sm:w-auto">{t('cancel')}</button>
+          <button type="button" onClick={() => onConfirm('finish')} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-md transition-colors w-full sm:w-auto">{t('confirmEndJobAndReturn')}</button>
+          <button type="button" onClick={() => onConfirm('finishAndNew')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md transition-colors w-full sm:w-auto">{t('confirmEndJobAndNew')}</button>
         </div>
       </div>
     </div>

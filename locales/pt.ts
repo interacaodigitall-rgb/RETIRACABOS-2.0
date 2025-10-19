@@ -1,3 +1,4 @@
+
 export default {
   "appName": "RetiraCabo 2.0",
   "welcomeTitle": "Bem-vindo ao RetiraCabo",
@@ -72,7 +73,8 @@ export default {
   "generatePdf": "Gerar PDF",
   "pdfReportTitle": "Relatório de Retirada de Cabos",
   "endJob": "Finalizar Trabalho",
-  "endJobTitle": "Finalizar Trabalho",
-  "endJobConfirmation": "Tem certeza que deseja finalizar este trabalho? O status será alterado para 'Concluído' e não poderá ser editado.",
-  "confirmEndJob": "Sim, Finalizar"
+  "endJobTitle": "Finalizar Trabalho?",
+  "endJobConfirmation": "O que você gostaria de fazer a seguir?",
+  "confirmEndJobAndReturn": "Concluir e Voltar à Lista",
+  "confirmEndJobAndNew": "Concluir e Iniciar Outro"
 };
