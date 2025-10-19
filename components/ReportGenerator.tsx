@@ -36,7 +36,7 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
 
 
 const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobName, technicianName }) => {
-  const { t, language } = useTranslations();
+  const { t } = useTranslations();
   const [report, setReport] = useState('');
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [reportError, setReportError] = useState('');
@@ -56,7 +56,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobName, te
     setReportError('');
     setReport('');
     try {
-      const result = await generateJobReport(segments, jobName, technicianName, language);
+      const result = await generateJobReport(segments, jobName, technicianName);
       setReport(result);
     } catch (err) {
       setReportError(t('aiError'));
@@ -75,7 +75,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobName, te
     setAnalysisError('');
     setRouteAnalysis('');
     try {
-      const result = await generateRouteAnalysis(segments, language);
+      const result = await generateRouteAnalysis(segments);
       setRouteAnalysis(result);
     } catch (err) {
       setAnalysisError(t('routeAnalysisError'));

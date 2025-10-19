@@ -4,7 +4,6 @@ import { Segment, Coordinates, CableType, Job } from './types';
 import { calculateDistance } from './utils/geolocation';
 import { JobDashboard } from './components/JobDashboard';
 import { TranslationsProvider, useTranslations } from './contexts/TranslationsContext';
-import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, onSnapshot, writeBatch, orderBy } from 'firebase/firestore';
@@ -35,7 +34,6 @@ const Header: React.FC<{ user: User | null; onLogout: () => void; onBack: () => 
           <h1 className="text-2xl font-bold text-white tracking-wider">{t('appName')}</h1>
         </div>
         <div className="flex items-center space-x-4">
-          <LanguageSwitcher />
           {user && <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md text-sm">Sair</button>}
         </div>
       </div>
