@@ -110,7 +110,7 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
                         <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors">
                             <h3 className="text-xl font-bold text-white truncate">{job.nome}</h3>
                             <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
-                            <p className="text-sm text-gray-500">Iniciado em: {new Date(job.dataInicio.toDate()).toLocaleDateString()}</p>
+                            <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
                         </div>
                     ))}
                 </div>
@@ -153,9 +153,18 @@ function AppContent() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid), orderBy('dataInicio', 'desc'));
+    // Remove orderBy from the query to avoid needing a composite index.
+    // The sorting will be handled on the client-side.
+    const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const jobsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+      
+      // Sort the jobs on the client-side to ensure the newest are first.
+      jobsData.sort((a, b) => {
+        if (!a.dataInicio || !b.dataInicio) return 0; // Handle pending server timestamps
+        return b.dataInicio.toDate().getTime() - a.dataInicio.toDate().getTime();
+      });
+
       setJobs(jobsData);
     });
     return () => unsubscribe();
@@ -194,16 +203,24 @@ function AppContent() {
   
   const handleStartJob = useCallback(async (data: { jobName: string; technicianName: string }) => {
     if (!user) return;
-    const newJob = {
+    const newJobData = {
         usuarioId: user.uid,
         nome: data.jobName,
         dataInicio: serverTimestamp(),
         totalMetros: 0,
-        // Fix: Use 'as const' to ensure TypeScript infers the literal type 'ativo' instead of 'string'.
         status: 'ativo' as const,
     };
-    const docRef = await addDoc(collection(db, 'trabalhos'), newJob);
-    setActiveJob({ id: docRef.id, ...newJob });
+    const docRef = await addDoc(collection(db, 'trabalhos'), newJobData);
+    
+    // The `dataInicio` will be null until the server confirms the timestamp.
+    // We create a temporary client-side object for immediate UI feedback.
+    const tempActiveJob: Job = {
+        id: docRef.id,
+        ...newJobData,
+        dataInicio: { toDate: () => new Date() } // Simulate a Timestamp object for immediate use
+    };
+
+    setActiveJob(tempActiveJob);
     setIsStartJobModalVisible(false);
   }, [user]);
 
