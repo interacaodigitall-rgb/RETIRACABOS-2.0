@@ -122,6 +122,87 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
     )
 }
 
+const AddPoleModal: React.FC<{ onSave: (coords: Coordinates) => void; onCancel: () => void; }> = ({ onSave, onCancel }) => {
+    const { t } = useTranslations();
+    const [coords, setCoords] = useState<Coordinates | null>(null);
+    const [isManual, setIsManual] = useState(false);
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleGetLocation = () => {
+        setIsLoading(true);
+        setError('');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setCoords({
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude,
+                });
+                setIsLoading(false);
+                setIsManual(false); // Lock manual editing after successful fetch
+            },
+            (err) => {
+                setError(t('gpsUnavailable'));
+                setIsLoading(false);
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (coords) {
+            onSave(coords);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md animate-fade-in-up">
+                <h2 className="text-2xl font-bold text-white mb-4">{t('addPoleTitle')}</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="p-4 rounded-lg bg-gray-900">
+                        <button type="button" onClick={handleGetLocation} disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500">
+                            {isLoading ? (
+                                <>
+                                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {t('gettingLocation')}
+                                </>
+                            ) : (
+                                <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                {t('getCurrentLocation')}
+                                </>
+                            )}
+                        </button>
+                        {error && <p className="text-red-400 text-sm mt-2 text-center">{error}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400">Latitude</label>
+                            <input type="number" step="any" readOnly={!isManual} value={coords?.lat || ''} onChange={(e) => setCoords(c => ({...c!, lat: parseFloat(e.target.value)}))} className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white read-only:bg-gray-600"/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400">Longitude</label>
+                             <input type="number" step="any" readOnly={!isManual} value={coords?.lon || ''} onChange={(e) => setCoords(c => ({...c!, lon: parseFloat(e.target.value)}))} className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white read-only:bg-gray-600"/>
+                        </div>
+                        <div className="text-right">
+                            <button type="button" onClick={() => setIsManual(!isManual)} className="text-sm text-blue-400 hover:underline">{isManual ? t('lockCoordinates') : t('editManually')}</button>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-4 pt-4">
+                        <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md transition-colors">{t('cancel')}</button>
+                        <button type="submit" disabled={!coords} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md transition-colors disabled:bg-gray-500">{t('savePole')}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
 function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -134,6 +215,7 @@ function AppContent() {
   const [lastPole, setLastPole] = useState<Coordinates | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isStartJobModalVisible, setIsStartJobModalVisible] = useState(false);
+  const [isAddPoleModalVisible, setIsAddPoleModalVisible] = useState(false);
   const [newSegmentData, setNewSegmentData] = useState<Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> | null>(null);
 
   useEffect(() => {
@@ -248,13 +330,15 @@ function AppContent() {
     setLastPole(endCoords);
   }, []);
 
-  const handleMarkPole = useCallback((coords: Coordinates) => {
+  const handleSavePole = useCallback((coords: Coordinates) => {
     if (lastPole) {
-      handleAddSegment(lastPole, coords);
+        handleAddSegment(lastPole, coords);
     } else {
-      setLastPole(coords);
+        setLastPole(coords);
     }
+    setIsAddPoleModalVisible(false);
   }, [lastPole, handleAddSegment]);
+
 
   const handleSaveSegment = useCallback(async (formData: { cableType: CableType; quantity: number; notes: string; }) => {
     if (newSegmentData && activeJob) {
@@ -323,8 +407,7 @@ function AppContent() {
             <JobDashboard 
               jobName={activeJob.nome}
               technicianName={user.displayName || user.email || 'Técnico'}
-              onMarkPole={handleMarkPole}
-              onAddSegment={handleAddSegment}
+              onAddPole={() => setIsAddPoleModalVisible(true)}
               segments={segments}
               totalDistance={activeJob.totalMetros}
               lastPole={lastPole}
@@ -338,6 +421,9 @@ function AppContent() {
       <Suspense fallback={null}>
         {isStartJobModalVisible && (
           <StartJobModal onStart={handleStartJob} onCancel={() => setIsStartJobModalVisible(false)} />
+        )}
+        {isAddPoleModalVisible && (
+            <AddPoleModal onSave={handleSavePole} onCancel={() => setIsAddPoleModalVisible(false)} />
         )}
         {isFormVisible && newSegmentData && (
           <SegmentFormModal
