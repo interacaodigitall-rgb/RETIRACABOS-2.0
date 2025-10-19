@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Coordinates } from '../types';
 
@@ -9,7 +8,7 @@ interface GeolocationState {
   isLoading: boolean;
 }
 
-export const useGeolocation = () => {
+export const useGeolocation = (refreshKey?: any) => {
   const [state, setState] = useState<GeolocationState>({
     location: null,
     accuracy: null,
@@ -18,6 +17,8 @@ export const useGeolocation = () => {
   });
 
   useEffect(() => {
+    setState(s => ({ ...s, isLoading: true, error: null }));
+
     if (!navigator.geolocation) {
       setState(s => ({ ...s, error: 'Geolocation is not supported by your browser.', isLoading: false }));
       return;
@@ -52,7 +53,7 @@ export const useGeolocation = () => {
     return () => {
       navigator.geolocation.clearWatch(watcher);
     };
-  }, []);
+  }, [refreshKey]);
 
   return state;
 };

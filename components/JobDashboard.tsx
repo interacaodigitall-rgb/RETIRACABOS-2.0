@@ -54,9 +54,14 @@ interface JobDashboardProps {
 }
 
 export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianName, onMarkPole, segments, totalDistance, lastPole }) => {
-  const { location, accuracy, error, isLoading } = useGeolocation();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { location, accuracy, error, isLoading } = useGeolocation(refreshKey);
   const [feedback, setFeedback] = useState('');
   const { t } = useTranslations();
+
+  const handleGpsRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   const LOW_ACCURACY_THRESHOLD = 20;
   const isAccuracyLow = accuracy !== null && accuracy > LOW_ACCURACY_THRESHOLD;
@@ -79,7 +84,7 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !location) {
     return <GpsLoadingScreen />;
   }
 
@@ -98,12 +103,19 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
         </div>
         <div className="border-t border-gray-700 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-lg text-gray-300 gap-2">
             <span>{t('totalRemoved')}: <span className="font-bold text-blue-400 text-xl">{totalDistance.toFixed(2)} {t('meters')}</span></span>
-            <GPSStatus 
-                isLoading={isLoading} 
-                error={error} 
-                location={location} 
-                accuracy={accuracy} 
-            />
+            <div className="flex items-center gap-2">
+              <GPSStatus 
+                  isLoading={isLoading} 
+                  error={error} 
+                  location={location} 
+                  accuracy={accuracy} 
+              />
+              <button onClick={handleGpsRefresh} title={t('refreshGps')} className="p-1 rounded-full hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l4.992-4.993m-4.993 0l-3.181 3.183a8.25 8.25 0 000 11.664l3.181 3.183" />
+                  </svg>
+              </button>
+            </div>
         </div>
       </div>
 
