@@ -1,0 +1,8 @@
+{
+  "name": "RetiraCabo 2.0",
+  "description": "A web application for telecommunications technicians to log the removal of copper cables. It uses GPS to measure distances between poles, records cable types, allows for photo documentation, and summarizes the total length of cable removed.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}
