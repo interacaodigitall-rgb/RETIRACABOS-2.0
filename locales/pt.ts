@@ -1,5 +1,5 @@
 export default {
-  "appName": "RetiraCabo",
+  "appName": "RetiraCabo 2.0",
   "welcomeTitle": "Bem-vindo ao RetiraCabo",
   "welcomeDescription": "A ferramenta definitiva para técnicos de telecomunicações. Registre a retirada de cabos com precisão GPS, documentação fotográfica e relatórios inteligentes.",
   "startNewJob": "Iniciar Novo Trabalho",

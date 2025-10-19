@@ -1,9 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Segment, Coordinates } from '../types';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { SegmentList } from './SegmentList';
 import { MapDisplay } from './MapDisplay';
 import { useTranslations } from '../contexts/TranslationsContext';
+
+const GpsLoadingScreen: React.FC = () => (
+    <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center">
+      <svg className="animate-spin h-12 w-12 text-blue-500 mb-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <h2 className="text-2xl font-bold text-white">Iniciando GPS, aguarde...</h2>
+      <p className="text-gray-400 mt-2 max-w-sm">Pode ser necessário aceitar a permissão de localização no seu navegador para continuar.</p>
+    </div>
+);
 
 interface GPSStatusProps {
     isLoading: boolean;
@@ -40,21 +51,12 @@ interface JobDashboardProps {
   segments: Segment[];
   totalDistance: number;
   lastPole: Coordinates | null;
-  onGpsReady: () => void;
 }
 
-export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianName, onMarkPole, segments, totalDistance, lastPole, onGpsReady }) => {
+export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianName, onMarkPole, segments, totalDistance, lastPole }) => {
   const { location, accuracy, error, isLoading } = useGeolocation();
   const [feedback, setFeedback] = useState('');
-  const [isGpsReadyCalled, setIsGpsReadyCalled] = useState(false);
   const { t } = useTranslations();
-
-  useEffect(() => {
-    if (!isLoading && !isGpsReadyCalled) {
-      onGpsReady();
-      setIsGpsReadyCalled(true);
-    }
-  }, [isLoading, onGpsReady, isGpsReadyCalled]);
 
   const LOW_ACCURACY_THRESHOLD = 20;
   const isAccuracyLow = accuracy !== null && accuracy > LOW_ACCURACY_THRESHOLD;
@@ -76,6 +78,10 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
       setTimeout(() => setFeedback(''), 3000);
     }
   };
+
+  if (isLoading) {
+    return <GpsLoadingScreen />;
+  }
 
   return (
     <div className="space-y-6">
@@ -104,7 +110,7 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
       <div className="text-center">
         <button
           onClick={handlePress}
-          disabled={isLoading || !!error}
+          disabled={!!error}
           className={`text-white font-bold py-4 px-10 rounded-full text-2xl shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-4 disabled:bg-gray-500 disabled:cursor-not-allowed ${
             isAccuracyLow
               ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-400'
@@ -114,7 +120,7 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
           {lastPole ? t('markNextPole') : t('markInitialPole')}
         </button>
         {feedback && <p className="mt-4 text-lg text-green-300 transition-opacity duration-300">{feedback}</p>}
-        {isAccuracyLow && !isLoading && accuracy && (
+        {isAccuracyLow && accuracy && (
             <p className="mt-4 text-lg text-yellow-400 max-w-lg mx-auto">{t('gpsAccuracyWarning', { accuracy: accuracy.toFixed(1) })}</p>
         )}
       </div>
