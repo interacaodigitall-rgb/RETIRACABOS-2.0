@@ -1,12 +1,20 @@
 import { GoogleGenAI } from "@google/genai";
 import { Segment, Coordinates } from '../types';
 
-const API_KEY = process.env.API_KEY;
-if (!API_KEY) {
-    console.error("Gemini API key is not set. Please set the API_KEY environment variable.");
+let ai: GoogleGenAI | null = null;
+let initError: string | null = null;
+
+try {
+    const API_KEY = process.env.API_KEY;
+    if (!API_KEY) {
+        throw new Error("A chave da API Gemini não está configurada nas variáveis de ambiente.");
+    }
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+} catch (error: any) {
+    console.error("Falha ao inicializar o GoogleGenAI:", error);
+    initError = error.message || "Erro desconhecido ao inicializar a IA.";
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
 
 const getPrompt = (jobName: string, technicianName: string, totalDistance: string, segments: Segment[], formattedSegments: string) => {
     return `
@@ -57,8 +65,9 @@ const getRouteAnalysisPrompt = (poles: Coordinates[], totalDistance: string) => 
 }
 
 export const generateJobReport = async (segments: Segment[], jobName: string, technicianName: string): Promise<string> => {
-  if (!API_KEY) {
-    return "Error: Gemini API key not configured.";
+  if (initError) return `Erro de inicialização do serviço de IA: ${initError}`;
+  if (!ai) {
+    return "Erro: O serviço Gemini AI não está inicializado.";
   }
 
   const formattedSegments = segments.map((seg, index) =>
@@ -89,8 +98,9 @@ export const generateJobReport = async (segments: Segment[], jobName: string, te
 
 
 export const generateRouteAnalysis = async (segments: Segment[]): Promise<string> => {
-    if (!API_KEY) {
-        return "Error: Gemini API key not configured.";
+    if (initError) return `Erro de inicialização do serviço de IA: ${initError}`;
+    if (!ai) {
+        return "Erro: O serviço Gemini AI não está inicializado.";
     }
 
     const poles: Coordinates[] = [];
@@ -100,7 +110,7 @@ export const generateRouteAnalysis = async (segments: Segment[]): Promise<string
     }
     
     if (poles.length < 3) {
-        return "Not enough data for analysis.";
+        return "Dados insuficientes para análise.";
     }
 
     const totalDistance = segments.reduce((sum, seg) => sum + seg.distance, 0).toFixed(2);

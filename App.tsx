@@ -53,9 +53,9 @@ const AuthComponent: React.FC = () => {
         setError('');
         try {
             if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
+                await signInWithEmailAndPassword(auth!, email, password);
             } else {
-                await createUserWithEmailAndPassword(auth, email, password);
+                await createUserWithEmailAndPassword(auth!, email, password);
             }
         } catch (err: any) {
             setError(err.message);
@@ -204,6 +204,18 @@ const AddPoleModal: React.FC<{ onSave: (coords: Coordinates) => void; onCancel: 
 
 
 function AppContent() {
+  if (!auth || !db) {
+    return (
+        <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+            <div className="text-center p-8 bg-red-900 border border-red-700 rounded-lg shadow-2xl">
+                <h1 className="text-3xl font-bold mb-4">Erro de Inicialização</h1>
+                <p className="text-lg">Não foi possível conectar aos serviços necessários.</p>
+                <p className="text-gray-400 mt-2">Por favor, verifique sua conexão com a internet e a configuração da aplicação.</p>
+            </div>
+        </div>
+    );
+  }
+  
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
