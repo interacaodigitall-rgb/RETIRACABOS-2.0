@@ -264,8 +264,13 @@ function AppContent() {
   useEffect(() => {
     if (activeJobId && jobs.length > 0) {
       const job = jobs.find(j => j.id === activeJobId);
-      setActiveJob(job || null);
-    } else {
+      // Only update if the job is found. This prevents a race condition
+      // where activeJob is set to null because the `jobs` list hasn't
+      // updated with the newly created job yet.
+      if (job) {
+          setActiveJob(job);
+      }
+    } else if (!activeJobId) {
       setActiveJob(null);
     }
   }, [activeJobId, jobs]);
