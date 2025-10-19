@@ -66,5 +66,10 @@
   "analyzingRoute": "Analizando Ruta...",
   "routeAnalysisError": "Fallo al analizar la ruta.",
   "routeAnalysisTitle": "Análisis de Eficiencia de la Ruta",
-  "notEnoughDataForAnalysis": "Se necesitan al menos 2 segmentos (3 postes) para analizar la ruta."
+  "notEnoughDataForAnalysis": "Se necesitan al menos 2 segmentos (3 postes) para analizar la ruta.",
+  "distanceMeter": "Medidor de Distancia Punto a Punto",
+  "startMeasurement": "Iniciar Medición",
+  "endMeasurement": "Finalizar Medición",
+  "measurementStarted": "¡Medición iniciada! Muévase al punto final y haga clic en 'Finalizar'.",
+  "measurementInProgress": "Medición en curso..."
 }

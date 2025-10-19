@@ -235,20 +235,26 @@ function AppContent() {
     setIsStartJobModalVisible(false);
   }, [user, selectJob]);
 
+  const handleAddSegment = useCallback((startCoords: Coordinates, endCoords: Coordinates) => {
+    const distance = calculateDistance(startCoords.lat, startCoords.lon, endCoords.lat, endCoords.lon);
+    const newSegData: Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> = {
+      start: startCoords,
+      end: endCoords,
+      distance: distance,
+      timestamp: new Date().toISOString(),
+    };
+    setNewSegmentData(newSegData);
+    setIsFormVisible(true);
+    setLastPole(endCoords);
+  }, []);
+
   const handleMarkPole = useCallback((coords: Coordinates) => {
     if (lastPole) {
-      const distance = calculateDistance(lastPole.lat, lastPole.lon, coords.lat, coords.lon);
-      const newSegData: Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> = {
-        start: lastPole,
-        end: coords,
-        distance: distance,
-        timestamp: new Date().toISOString(),
-      };
-      setNewSegmentData(newSegData);
-      setIsFormVisible(true);
+      handleAddSegment(lastPole, coords);
+    } else {
+      setLastPole(coords);
     }
-    setLastPole(coords);
-  }, [lastPole]);
+  }, [lastPole, handleAddSegment]);
 
   const handleSaveSegment = useCallback(async (formData: { cableType: CableType; quantity: number; notes: string; }) => {
     if (newSegmentData && activeJob) {
@@ -318,6 +324,7 @@ function AppContent() {
               jobName={activeJob.nome}
               technicianName={user.displayName || user.email || 'Técnico'}
               onMarkPole={handleMarkPole}
+              onAddSegment={handleAddSegment}
               segments={segments}
               totalDistance={activeJob.totalMetros}
               lastPole={lastPole}

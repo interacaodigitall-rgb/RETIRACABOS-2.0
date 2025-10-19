@@ -66,5 +66,10 @@ export default {
   "analyzingRoute": "Analisando Rota...",
   "routeAnalysisError": "Falha ao analisar a rota.",
   "routeAnalysisTitle": "Análise de Eficiência da Rota",
-  "notEnoughDataForAnalysis": "São necessários pelo menos 2 segmentos (3 postes) para analisar a rota."
+  "notEnoughDataForAnalysis": "São necessários pelo menos 2 segmentos (3 postes) para analisar a rota.",
+  "distanceMeter": "Medidor de Distância Ponto-a-Ponto",
+  "startMeasurement": "Iniciar Medição",
+  "endMeasurement": "Finalizar Medição",
+  "measurementStarted": "Medição iniciada! Mova-se para o ponto final e clique em 'Finalizar'.",
+  "measurementInProgress": "Medição em andamento..."
 };
