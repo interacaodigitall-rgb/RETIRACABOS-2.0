@@ -1,21 +1,19 @@
-
 import React, { useState } from 'react';
 import { useTranslations } from '../contexts/TranslationsContext';
 
 interface StartJobModalProps {
-  onStart: (data: { jobName: string; technicianName: string }) => void;
+  onStart: (data: { jobName: string }) => void;
   onCancel: () => void;
 }
 
 const StartJobModal: React.FC<StartJobModalProps> = ({ onStart, onCancel }) => {
   const { t } = useTranslations();
   const [jobName, setJobName] = useState(`Trabalho_${new Date().toISOString().slice(0, 10)}`);
-  const [technicianName, setTechnicianName] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (jobName.trim() && technicianName.trim()) {
-      onStart({ jobName, technicianName });
+    if (jobName.trim()) {
+      onStart({ jobName });
     }
   };
 
@@ -35,18 +33,6 @@ const StartJobModal: React.FC<StartJobModalProps> = ({ onStart, onCancel }) => {
               required
               className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder={t('jobNamePlaceholder')}
-            />
-          </div>
-          <div>
-            <label htmlFor="technicianName" className="block text-sm font-medium text-gray-300 mb-1">{t('technicianName')}</label>
-            <input
-              type="text"
-              id="technicianName"
-              value={technicianName}
-              onChange={(e) => setTechnicianName(e.target.value)}
-              required
-              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder={t('technicianNamePlaceholder')}
             />
           </div>
           <div className="flex justify-end space-x-4 pt-4">

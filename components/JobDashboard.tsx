@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Segment, Coordinates } from '../types';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { SegmentList } from './SegmentList';
@@ -40,12 +40,21 @@ interface JobDashboardProps {
   segments: Segment[];
   totalDistance: number;
   lastPole: Coordinates | null;
+  onGpsReady: () => void;
 }
 
-export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianName, onMarkPole, segments, totalDistance, lastPole }) => {
+export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianName, onMarkPole, segments, totalDistance, lastPole, onGpsReady }) => {
   const { location, accuracy, error, isLoading } = useGeolocation();
   const [feedback, setFeedback] = useState('');
+  const [isGpsReadyCalled, setIsGpsReadyCalled] = useState(false);
   const { t } = useTranslations();
+
+  useEffect(() => {
+    if (!isLoading && !isGpsReadyCalled) {
+      onGpsReady();
+      setIsGpsReadyCalled(true);
+    }
+  }, [isLoading, onGpsReady, isGpsReadyCalled]);
 
   const LOW_ACCURACY_THRESHOLD = 20;
   const isAccuracyLow = accuracy !== null && accuracy > LOW_ACCURACY_THRESHOLD;
@@ -53,7 +62,7 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
   const handlePress = () => {
     if (isAccuracyLow) {
       if (!window.confirm(t('gpsLowAccuracyConfirm'))) {
-        return; // User canceled the action
+        return; 
       }
     }
 

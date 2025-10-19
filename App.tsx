@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Segment, Coordinates, CableType, Job } from './types';
 import { calculateDistance } from './utils/geolocation';
@@ -123,6 +122,17 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
     )
 }
 
+const GpsLoadingScreen: React.FC = () => (
+  <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center">
+    <svg className="animate-spin h-12 w-12 text-blue-500 mb-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <h2 className="text-2xl font-bold text-white">Iniciando GPS, aguarde...</h2>
+    <p className="text-gray-400 mt-2 max-w-sm">Pode ser necessário aceitar a permissão de localização no seu navegador para continuar.</p>
+  </div>
+);
+
 
 function AppContent() {
   const [user, setUser] = useState<User | null>(null);
@@ -135,6 +145,7 @@ function AppContent() {
   const [lastPole, setLastPole] = useState<Coordinates | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isStartJobModalVisible, setIsStartJobModalVisible] = useState(false);
+  const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [newSegmentData, setNewSegmentData] = useState<Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> | null>(null);
 
   useEffect(() => {
@@ -152,18 +163,13 @@ function AppContent() {
 
   useEffect(() => {
     if (!user) return;
-    // Remove orderBy from the query to avoid needing a composite index.
-    // The sorting will be handled on the client-side.
     const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const jobsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
-      
-      // Sort the jobs on the client-side to ensure the newest are first.
       jobsData.sort((a, b) => {
-        if (!a.dataInicio || !b.dataInicio) return 0; // Handle pending server timestamps
+        if (!a.dataInicio || !b.dataInicio) return 0; 
         return b.dataInicio.toDate().getTime() - a.dataInicio.toDate().getTime();
       });
-
       setJobs(jobsData);
     });
     return () => unsubscribe();
@@ -200,7 +206,7 @@ function AppContent() {
     return () => unsubscribe();
   }, [activeJob]);
   
-  const handleStartJob = useCallback(async (data: { jobName: string; technicianName: string }) => {
+  const handleStartJob = useCallback(async (data: { jobName: string }) => {
     if (!user) return;
     const newJobData = {
         usuarioId: user.uid,
@@ -211,17 +217,20 @@ function AppContent() {
     };
     const docRef = await addDoc(collection(db, 'trabalhos'), newJobData);
     
-    // The `dataInicio` will be null until the server confirms the timestamp.
-    // We create a temporary client-side object for immediate UI feedback.
     const tempActiveJob: Job = {
         id: docRef.id,
         ...newJobData,
-        dataInicio: { toDate: () => new Date() } // Simulate a Timestamp object for immediate use
+        dataInicio: { toDate: () => new Date() } 
     };
 
     setActiveJob(tempActiveJob);
     setIsStartJobModalVisible(false);
+    setIsGpsLoading(true);
   }, [user]);
+
+  const handleGpsReady = useCallback(() => {
+    setIsGpsLoading(false);
+  }, []);
 
   const handleMarkPole = useCallback((coords: Coordinates) => {
     if (lastPole) {
@@ -279,13 +288,18 @@ function AppContent() {
     setNewSegmentData(null);
   }, [segments]);
 
+  const handleBackToList = () => {
+    setActiveJob(null);
+    setIsGpsLoading(false);
+  }
+
   if (authLoading) {
       return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Carregando...</div>
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
-      <Header user={user} onLogout={() => auth.signOut()} onBack={() => setActiveJob(null)} showBackButton={!!activeJob} />
+      <Header user={user} onLogout={() => auth.signOut()} onBack={handleBackToList} showBackButton={!!activeJob} />
       <main className="container mx-auto p-4 md:p-6">
         {!user ? (
             <AuthComponent />
@@ -293,17 +307,24 @@ function AppContent() {
             <JobListComponent jobs={jobs} onSelect={setActiveJob} onNew={() => setIsStartJobModalVisible(true)} />
         ) : (
           <>
-            <JobDashboard 
-              jobName={activeJob.nome}
-              technicianName={user.displayName || user.email || 'Técnico'}
-              onMarkPole={handleMarkPole}
-              segments={segments}
-              totalDistance={activeJob.totalMetros}
-              lastPole={lastPole}
-            />
-            <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando relatório...</div>}>
-              <ReportGenerator segments={segments} jobName={activeJob.nome} technicianName={user.displayName || user.email || 'Técnico'} />
-            </Suspense>
+            {isGpsLoading ? (
+              <GpsLoadingScreen />
+            ) : (
+              <>
+                <JobDashboard 
+                  jobName={activeJob.nome}
+                  technicianName={user.displayName || user.email || 'Técnico'}
+                  onMarkPole={handleMarkPole}
+                  segments={segments}
+                  totalDistance={activeJob.totalMetros}
+                  lastPole={lastPole}
+                  onGpsReady={handleGpsReady}
+                />
+                <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando relatório...</div>}>
+                  <ReportGenerator segments={segments} jobName={activeJob.nome} technicianName={user.displayName || user.email || 'Técnico'} />
+                </Suspense>
+              </>
+            )}
           </>
         )}
       </main>
