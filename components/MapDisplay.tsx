@@ -1,6 +1,7 @@
 import React from 'react';
 import { Segment, Coordinates } from '../types';
 import { useTranslations } from '../contexts/TranslationsContext';
+import { encode } from '../utils/polyline';
 
 
 interface MapDisplayProps {
@@ -29,9 +30,10 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ segments, lastPole }) =>
     );
   }
 
-  const path = segments.map(seg => `${seg.start.lat},${seg.start.lon}|${seg.end.lat},${seg.end.lon}`).join('|');
   const markers = poles.map((pole, index) => `&markers=color:red%7Clabel:${index + 1}%7C${pole.lat},${pole.lon}`).join('');
-  const pathString = segments.length > 0 ? `&path=color:0x00aaff|weight:4|${path}` : '';
+  
+  const encodedPolyline = encode(poles);
+  const pathString = segments.length > 0 ? `&path=color:0x00aaff|weight:4|enc:${encodedPolyline}` : '';
   
   const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=satellite${pathString}${markers}&key=${API_KEY}`;
   

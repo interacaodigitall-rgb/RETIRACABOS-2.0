@@ -60,5 +60,10 @@
   "startJob": "Iniciar Trabajo",
   "startJobTitle": "Detalles del Nuevo Trabajo",
   "jobInfo": "Información del Trabajo",
-  "technicianOnDuty": "Técnico Responsable"
+  "technicianOnDuty": "Técnico Responsable",
+  "analyzeRoute": "Analizar Ruta",
+  "analyzingRoute": "Analizando Ruta...",
+  "routeAnalysisError": "Fallo al analizar la ruta.",
+  "routeAnalysisTitle": "Análisis de Eficiencia de la Ruta",
+  "notEnoughDataForAnalysis": "Se necesitan al menos 2 segmentos (3 postes) para analizar la ruta."
 }

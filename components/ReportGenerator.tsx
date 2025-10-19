@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Segment } from '../types';
-import { generateJobReport } from '../services/geminiService';
+import { generateJobReport, generateRouteAnalysis } from '../services/geminiService';
 import { useTranslations } from '../contexts/TranslationsContext';
 
 interface ReportGeneratorProps {
@@ -38,32 +37,56 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
 export const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobName, technicianName }) => {
   const { t, language } = useTranslations();
   const [report, setReport] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState('');
+
+  const [routeAnalysis, setRouteAnalysis] = useState('');
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+
 
   const handleGenerateReport = async () => {
     if (segments.length === 0) {
-        setError(t('noDataToReport'));
-        setTimeout(() => setError(''), 3000);
+        setReportError(t('noDataToReport'));
+        setTimeout(() => setReportError(''), 3000);
         return;
     }
-    setIsLoading(true);
-    setError('');
+    setIsLoadingReport(true);
+    setReportError('');
     setReport('');
     try {
       const result = await generateJobReport(segments, jobName, technicianName, language);
       setReport(result);
     } catch (err) {
-      setError(t('aiError'));
+      setReportError(t('aiError'));
     } finally {
-      setIsLoading(false);
+      setIsLoadingReport(false);
+    }
+  };
+
+  const handleAnalyzeRoute = async () => {
+    if (segments.length < 2) { // Need at least 3 poles (2 segments) for a meaningful analysis
+        setAnalysisError(t('notEnoughDataForAnalysis'));
+        setTimeout(() => setAnalysisError(''), 4000);
+        return;
+    }
+    setIsLoadingAnalysis(true);
+    setAnalysisError('');
+    setRouteAnalysis('');
+    try {
+      const result = await generateRouteAnalysis(segments, language);
+      setRouteAnalysis(result);
+    } catch (err) {
+      setAnalysisError(t('routeAnalysisError'));
+    } finally {
+      setIsLoadingAnalysis(false);
     }
   };
 
   const handleDownloadCSV = () => {
     if (segments.length === 0) {
-        setError(t('noDataToExport'));
-        setTimeout(() => setError(''), 3000);
+        setReportError(t('noDataToExport'));
+        setTimeout(() => setReportError(''), 3000);
         return;
     }
 
@@ -95,13 +118,20 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobN
   return (
     <div className="mt-8 bg-gray-800 p-6 rounded-lg shadow-xl">
       <h2 className="text-2xl font-bold text-white mb-4">{t('reportAndExport')}</h2>
-      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           onClick={handleGenerateReport}
-          disabled={isLoading || !hasData}
+          disabled={isLoadingReport || !hasData}
           className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md flex-1 transition-colors"
         >
-          {isLoading ? t('generatingReport') : t('generateAiReport')}
+          {isLoadingReport ? t('generatingReport') : t('generateAiReport')}
+        </button>
+        <button
+          onClick={handleAnalyzeRoute}
+          disabled={isLoadingAnalysis || segments.length < 2}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md flex-1 transition-colors"
+        >
+          {isLoadingAnalysis ? t('analyzingRoute') : t('analyzeRoute')}
         </button>
         <button
           onClick={handleDownloadCSV}
@@ -111,12 +141,19 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({ segments, jobN
           {t('downloadCsv')}
         </button>
       </div>
-      {error && <p className="text-red-400 mt-4">{error}</p>}
+      {(reportError || analysisError) && <p className="text-red-400 mt-4">{reportError || analysisError}</p>}
       
       {report && (
         <div className="mt-6 p-4 bg-gray-900 rounded-md border border-gray-700">
           <h3 className="text-xl font-semibold text-white mb-3 border-b border-gray-700 pb-2">{t('aiReportTitle')}</h3>
           <MarkdownRenderer content={report} />
+        </div>
+      )}
+
+      {routeAnalysis && (
+        <div className="mt-6 p-4 bg-gray-900 rounded-md border border-gray-700">
+          <h3 className="text-xl font-semibold text-white mb-3 border-b border-gray-700 pb-2">{t('routeAnalysisTitle')}</h3>
+          <MarkdownRenderer content={routeAnalysis} />
         </div>
       )}
     </div>
