@@ -1,11 +1,10 @@
-
 import React, { useState, useRef } from 'react';
 import { Segment, CableType } from '../types';
 import { useTranslations } from '../contexts/TranslationsContext';
 
 interface SegmentFormModalProps {
-  segmentData: Omit<Segment, 'id' | 'cableType' | 'quantity' | 'photo' | 'notes'>;
-  onSave: (data: { cableType: CableType; quantity: number; photo: File | null; notes: string; }) => void;
+  segmentData: Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'>;
+  onSave: (data: { cableType: CableType; quantity: number; notes: string; }) => void;
   onCancel: () => void;
 }
 
@@ -13,10 +12,7 @@ export const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData,
   const { t } = useTranslations();
   const [cableType, setCableType] = useState<CableType>(CableType.Simple);
   const [quantity, setQuantity] = useState(1);
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const cableTypeOptions = [
     { value: CableType.Simple, label: t('cableTypeSimple') },
@@ -24,17 +20,9 @@ export const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData,
     { value: CableType.Other, label: t('cableTypeOther') },
   ];
 
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      setPhoto(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ cableType, quantity, photo, notes });
+    onSave({ cableType, quantity, notes });
   };
 
   return (
@@ -68,15 +56,6 @@ export const SegmentFormModal: React.FC<SegmentFormModalProps> = ({ segmentData,
               min="1"
               className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">{t('polePhoto')}</label>
-            <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} ref={fileInputRef} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition-colors">
-              {photo ? t('changePhoto') : t('takePhoto')}
-            </button>
-            {photoPreview && <img src={photoPreview} alt="Preview" className="mt-4 rounded-md max-h-40 mx-auto" />}
           </div>
 
           <div>

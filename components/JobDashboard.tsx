@@ -5,9 +5,14 @@ import { SegmentList } from './SegmentList';
 import { MapDisplay } from './MapDisplay';
 import { useTranslations } from '../contexts/TranslationsContext';
 
+interface GPSStatusProps {
+    isLoading: boolean;
+    error: string | null;
+    location: Coordinates | null;
+    accuracy: number | null;
+}
 
-const GPSStatus: React.FC = () => {
-    const { location, accuracy, error, isLoading } = useGeolocation();
+const GPSStatus: React.FC<GPSStatusProps> = ({ isLoading, error, location, accuracy }) => {
     const { t } = useTranslations();
     
     if (isLoading) {
@@ -78,7 +83,12 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ jobName, technicianN
         </div>
         <div className="border-t border-gray-700 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-lg text-gray-300 gap-2">
             <span>{t('totalRemoved')}: <span className="font-bold text-blue-400 text-xl">{totalDistance.toFixed(2)} {t('meters')}</span></span>
-            <GPSStatus />
+            <GPSStatus 
+                isLoading={isLoading} 
+                error={error} 
+                location={location} 
+                accuracy={accuracy} 
+            />
         </div>
       </div>
 

@@ -16,8 +16,15 @@ export interface Segment {
   distance: number; // in meters
   cableType: CableType;
   quantity: number;
-  photo?: File | null;
-  photoUrl?: string;
   notes: string;
   timestamp: string;
+}
+
+export interface Job {
+  id: string;
+  nome: string;
+  totalMetros: number;
+  dataInicio: any; // Firestore Timestamp
+  status: 'ativo' | 'concluido';
+  usuarioId: string;
 }
