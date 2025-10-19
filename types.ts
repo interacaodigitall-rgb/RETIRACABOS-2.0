@@ -17,6 +17,7 @@ export interface Segment {
   cableType: CableType;
   quantity: number;
   notes: string;
+  endPoleNotes: string;
   timestamp: string;
 }
 
@@ -27,4 +28,8 @@ export interface Job {
   dataInicio: any; // Firestore Timestamp
   status: 'ativo' | 'concluido';
   usuarioId: string;
+  initialPole?: {
+    coordinates: Coordinates;
+    notes: string;
+  };
 }

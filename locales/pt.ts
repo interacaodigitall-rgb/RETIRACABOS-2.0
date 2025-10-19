@@ -37,7 +37,7 @@ export default {
   "polePhoto": "Foto do Poste",
   "takePhoto": "Tirar Foto",
   "changePhoto": "Alterar Foto",
-  "notes": "Observações",
+  "notes": "Observações (do trecho)",
   "notesPlaceholder": "Ex: Cabo danificado, acesso difícil...",
   "cancel": "Cancelar",
   "save": "Salvar",
@@ -56,8 +56,8 @@ export default {
   "spanish": "Espanhol",
   "technicianName": "Nome do Técnico",
   "technicianNamePlaceholder": "Digite seu nome",
-  "jobName": "Nome do Trabalho",
-  "jobNamePlaceholder": "Ex: Retirada Centro-Sul",
+  "jobName": "ID do Trabalho",
+  "jobNamePlaceholder": "Ex: OS-12345 ou Retirada Centro-Sul",
   "startJob": "Iniciar Trabalho",
   "startJobTitle": "Detalhes do Novo Trabalho",
   "jobInfo": "Informações do Trabalho",
@@ -82,5 +82,10 @@ export default {
   "lockCoordinates": "Bloquear coordenadas",
   "savePole": "Salvar Poste",
   "pole": "Poste",
-  "poles": "Postes"
+  "poles": "Postes",
+  "poleNotes": "Observações do Poste",
+  "poleNotesPlaceholder": "Ex: Poste avariado, precisa voltar...",
+  "initialPoleNotes": "Obs. do Poste Inicial",
+  "generatePdf": "Gerar PDF",
+  "pdfReportTitle": "Relatório de Retirada de Cabos"
 };

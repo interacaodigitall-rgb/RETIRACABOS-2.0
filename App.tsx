@@ -5,7 +5,7 @@ import { JobDashboard } from './components/JobDashboard';
 import { TranslationsProvider, useTranslations } from './contexts/TranslationsContext';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, onSnapshot, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, onSnapshot, writeBatch, orderBy, updateDoc } from 'firebase/firestore';
 
 const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
 const SegmentFormModal = lazy(() => import('./components/SegmentFormModal'));
@@ -106,7 +106,8 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
                 <div className="space-y-4">
                     {jobs.map(job => (
                         <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors">
-                            <h3 className="text-xl font-bold text-white truncate">{job.nome}</h3>
+                            <h3 className="text-xl font-bold text-white truncate" title={job.nome}>{job.nome}</h3>
+                            <p className="text-gray-400">ID: {job.id}</p>
                             <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
                             <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
                         </div>
@@ -122,9 +123,10 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
     )
 }
 
-const AddPoleModal: React.FC<{ onSave: (coords: Coordinates) => void; onCancel: () => void; }> = ({ onSave, onCancel }) => {
+const AddPoleModal: React.FC<{ onSave: (coords: Coordinates, notes: string) => void; onCancel: () => void; }> = ({ onSave, onCancel }) => {
     const { t } = useTranslations();
     const [coords, setCoords] = useState<Coordinates | null>(null);
+    const [notes, setNotes] = useState('');
     const [isManual, setIsManual] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -139,7 +141,7 @@ const AddPoleModal: React.FC<{ onSave: (coords: Coordinates) => void; onCancel: 
                     lon: position.coords.longitude,
                 });
                 setIsLoading(false);
-                setIsManual(false); // Lock manual editing after successful fetch
+                setIsManual(false);
             },
             (err) => {
                 setError(t('gpsUnavailable'));
@@ -152,7 +154,7 @@ const AddPoleModal: React.FC<{ onSave: (coords: Coordinates) => void; onCancel: 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (coords) {
-            onSave(coords);
+            onSave(coords, notes);
         }
     };
     
@@ -176,6 +178,11 @@ const AddPoleModal: React.FC<{ onSave: (coords: Coordinates) => void; onCancel: 
                             )}
                         </button>
                         {error && <p className="text-red-400 text-sm mt-2 text-center">{error}</p>}
+                    </div>
+                    
+                    <div>
+                         <label className="block text-sm font-medium text-gray-400 mb-1">{t('poleNotes')}</label>
+                         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white" placeholder={t('poleNotesPlaceholder')} />
                     </div>
 
                     <div className="space-y-2">
@@ -246,13 +253,9 @@ function AppContent() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid));
+    const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid), orderBy('dataInicio', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const jobsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
-      jobsData.sort((a, b) => {
-        if (!a.dataInicio || !b.dataInicio) return 0; 
-        return b.dataInicio.toDate().getTime() - a.dataInicio.toDate().getTime();
-      });
       setJobs(jobsData);
     });
     return () => unsubscribe();
@@ -285,12 +288,15 @@ function AppContent() {
           cableType: data.tipo_cabo,
           quantity: data.quantidade,
           notes: data.observacoes,
+          endPoleNotes: data.observacoes_poste_final || '',
           timestamp: data.timestamp?.toDate().toISOString() || new Date().toISOString(),
         } as Segment
       });
       setSegments(segmentsData);
       if (segmentsData.length > 0) {
         setLastPole(segmentsData[segmentsData.length - 1].end);
+      } else if (activeJob.initialPole) {
+        setLastPole(activeJob.initialPole.coordinates);
       } else {
         setLastPole(null);
       }
@@ -310,46 +316,48 @@ function AppContent() {
 
   const handleStartJob = useCallback(async (data: { jobName: string }) => {
     if (!user) return;
+    const technicianIdentifier = user.displayName || user.email || 'Técnico Desconhecido';
+    const finalJobName = `${technicianIdentifier} - ${data.jobName}`;
     const newJobData = {
         usuarioId: user.uid,
-        nome: data.jobName,
+        nome: finalJobName,
         dataInicio: serverTimestamp(),
         totalMetros: 0,
         status: 'ativo' as const,
     };
     const docRef = await addDoc(collection(db, 'trabalhos'), newJobData);
-    
-    const tempActiveJob: Job = {
-        id: docRef.id,
-        ...newJobData,
-        dataInicio: { toDate: () => new Date() } 
-    };
-
-    selectJob(tempActiveJob);
+    selectJob({ ...newJobData, id: docRef.id, dataInicio: { toDate: () => new Date() } });
     setIsStartJobModalVisible(false);
   }, [user, selectJob]);
 
-  const handleAddSegment = useCallback((startCoords: Coordinates, endCoords: Coordinates) => {
+  const handleAddSegment = useCallback((startCoords: Coordinates, endCoords: Coordinates, endPoleNotes: string) => {
     const distance = calculateDistance(startCoords.lat, startCoords.lon, endCoords.lat, endCoords.lon);
     const newSegData: Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> = {
       start: startCoords,
       end: endCoords,
       distance: distance,
+      endPoleNotes: endPoleNotes,
       timestamp: new Date().toISOString(),
     };
     setNewSegmentData(newSegData);
     setIsFormVisible(true);
-    setLastPole(endCoords);
   }, []);
 
-  const handleSavePole = useCallback((coords: Coordinates) => {
-    if (lastPole) {
-        handleAddSegment(lastPole, coords);
-    } else {
+  const handleSavePole = useCallback(async (coords: Coordinates, notes: string) => {
+    if (lastPole && activeJob) {
+        handleAddSegment(lastPole, coords, notes);
+    } else if (activeJob) {
+        const jobRef = doc(db, 'trabalhos', activeJob.id);
+        await updateDoc(jobRef, {
+            initialPole: {
+                coordinates: coords,
+                notes: notes,
+            }
+        });
         setLastPole(coords);
     }
     setIsAddPoleModalVisible(false);
-  }, [lastPole, handleAddSegment]);
+  }, [lastPole, activeJob, handleAddSegment]);
 
 
   const handleSaveSegment = useCallback(async (formData: { cableType: CableType; quantity: number; notes: string; }) => {
@@ -363,6 +371,7 @@ function AppContent() {
         tipo_cabo: formData.cableType,
         quantidade: formData.quantity,
         observacoes: formData.notes,
+        observacoes_poste_final: newSegmentData.endPoleNotes,
         timestamp: serverTimestamp(),
       };
       
@@ -376,7 +385,7 @@ function AppContent() {
 
       await batch.commit();
 
-      setActiveJob(prev => prev ? { ...prev, totalMetros: newTotal } : null);
+      setLastPole(newSegmentData.end);
       
       setIsFormVisible(false);
       setNewSegmentData(null);
@@ -384,14 +393,9 @@ function AppContent() {
   }, [newSegmentData, activeJob]);
 
   const handleCancelForm = useCallback(() => {
-    if (segments.length > 0) {
-      setLastPole(segments[segments.length - 1].end);
-    } else {
-      setLastPole(null);
-    }
     setIsFormVisible(false);
     setNewSegmentData(null);
-  }, [segments]);
+  }, []);
 
   const handleBackToList = useCallback(() => {
     selectJob(null);
@@ -417,15 +421,14 @@ function AppContent() {
         ) : (
           <>
             <JobDashboard 
-              jobName={activeJob.nome}
+              job={activeJob}
               technicianName={user.displayName || user.email || 'Técnico'}
               onAddPole={() => setIsAddPoleModalVisible(true)}
               segments={segments}
-              totalDistance={activeJob.totalMetros}
               lastPole={lastPole}
             />
             <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando relatório...</div>}>
-              <ReportGenerator segments={segments} jobName={activeJob.nome} technicianName={user.displayName || user.email || 'Técnico'} />
+              <ReportGenerator job={activeJob} segments={segments} technicianName={user.displayName || user.email || 'Técnico'} />
             </Suspense>
           </>
         )}

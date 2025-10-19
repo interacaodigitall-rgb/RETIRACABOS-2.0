@@ -25,6 +25,12 @@ const SegmentCard: React.FC<{ segment: Segment, segmentNumber: number }> = ({ se
             <p className="text-2xl font-semibold text-blue-400 my-1">{segment.distance.toFixed(2)} {t('meters')}</p>
             <p className="text-sm text-gray-300">{t('cable')}: <span className="font-medium">{getCableTypeName(segment.cableType)}</span> (x{segment.quantity})</p>
             {segment.notes && <p className="text-sm text-gray-400 mt-2 italic">"{segment.notes}"</p>}
+            {segment.endPoleNotes && 
+              <div className="mt-2 pt-2 border-t border-gray-700">
+                <p className="text-sm font-semibold text-gray-400">{t('poleNotes')}:</p>
+                <p className="text-sm text-gray-300 italic">"{segment.endPoleNotes}"</p>
+              </div>
+            }
         </div>
     </div>
   );
