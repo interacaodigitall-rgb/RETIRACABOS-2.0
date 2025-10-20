@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Segment, Coordinates, CableType, Job } from './types';
 import { calculateDistance } from './utils/geolocation';
@@ -285,9 +286,14 @@ function AppContent() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid), orderBy('dataInicio', 'desc'));
+    const q = query(collection(db, 'trabalhos'), where('usuarioId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const jobsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+      const jobsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job))
+        .sort((a, b) => {
+          const timeA = a.dataInicio?.toDate()?.getTime() || 0;
+          const timeB = b.dataInicio?.toDate()?.getTime() || 0;
+          return timeB - timeA;
+        });
       setJobs(jobsData);
     });
     return () => unsubscribe();
