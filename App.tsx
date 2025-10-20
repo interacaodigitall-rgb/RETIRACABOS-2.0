@@ -257,6 +257,7 @@ function AppContent() {
           quantity: data.quantidade,
           notes: data.observacoes,
           endPoleNotes: data.observacoes_poste_final || '',
+          requiresReturn: data.requiresReturn || false,
           timestamp: data.timestamp?.toDate().toISOString() || new Date().toISOString(),
         } as Segment
       });
@@ -304,7 +305,7 @@ function AppContent() {
     startCoords: Coordinates, 
     endCoords: Coordinates, 
     distance: number,
-    formData: { cableType: CableType; quantity: number; notes: string; endPoleNotes: string; }
+    formData: { cableType: CableType; quantity: number; notes: string; endPoleNotes: string; requiresReturn: boolean; }
   ) => {
     if (activeJob) {
       const segmentToSave = {
@@ -317,6 +318,7 @@ function AppContent() {
         quantidade: formData.quantity,
         observacoes: formData.notes,
         observacoes_poste_final: formData.endPoleNotes,
+        requiresReturn: formData.requiresReturn,
         timestamp: serverTimestamp(),
       };
       

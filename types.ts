@@ -1,3 +1,4 @@
+// FIX: Removed the self-import of 'Coordinates' which was causing a declaration conflict.
 export interface Coordinates {
   lat: number;
   lon: number;
@@ -18,6 +19,7 @@ export interface Segment {
   quantity: number;
   notes: string;
   endPoleNotes: string;
+  requiresReturn: boolean;
   timestamp: string;
 }
 

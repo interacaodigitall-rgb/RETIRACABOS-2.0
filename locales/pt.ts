@@ -61,7 +61,7 @@ export default {
   "pole": "Poste",
   "poles": "Postes",
   "poleNotes": "Observações do Poste de Chegada",
-  "poleNotesPlaceholder": "Ex: Poste avariado, precisa voltar...",
+  "poleNotesPlaceholder": "Ex: Poste avariado, precisa de equipe extra...",
   "initialPoleNotes": "Obs. do Poste Inicial",
   "generatePdf": "Gerar PDF",
   "pdfReportTitle": "Relatório de Retirada de Cabos",
@@ -79,5 +79,11 @@ export default {
   "resumeJob": "Retomar Trabalho",
   "jobPaused": "Trabalho Pausado",
   "jobPausedMessage": "Este trabalho está pausado. Retome para continuar registrando.",
-  "pausedJobs": "Pausados"
+  "pausedJobs": "Pausados",
+  "requiresReturn": "Retorno necessário neste poste?",
+  "returnNeeded": "Retorno Necessário",
+  "returnVisitTitle": "Postes Marcados para Retorno",
+  "returnVisitReason": "Motivo",
+  "returnVisitLocation": "Localização",
+  "goToMap": "Ir para o Mapa"
 };

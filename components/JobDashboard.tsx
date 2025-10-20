@@ -12,7 +12,7 @@ interface JobDashboardProps {
   onTogglePause: () => void;
   segments: Segment[];
   lastPole: Coordinates | null;
-  onSaveSegment: (start: Coordinates, end: Coordinates, distance: number, data: { cableType: CableType, quantity: number, notes: string, endPoleNotes: string }) => void;
+  onSaveSegment: (start: Coordinates, end: Coordinates, distance: number, data: { cableType: CableType, quantity: number, notes: string, endPoleNotes: string, requiresReturn: boolean }) => void;
   onSaveInitialPole: (coords: Coordinates, notes: string) => void;
 }
 
@@ -35,6 +35,7 @@ const MeasurementPanel: React.FC<{
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
   const [endPoleNotes, setEndPoleNotes] = useState('');
+  const [requiresReturn, setRequiresReturn] = useState(false);
 
   const cableTypeOptions = [
     { value: CableType.Simple, label: t('cableTypeSimple') },
@@ -75,6 +76,7 @@ const MeasurementPanel: React.FC<{
     setQuantity(1);
     setNotes('');
     setEndPoleNotes('');
+    setRequiresReturn(false);
   };
 
   const handleSave = () => {
@@ -89,7 +91,8 @@ const MeasurementPanel: React.FC<{
             cableType,
             quantity: finalQuantity,
             notes,
-            endPoleNotes
+            endPoleNotes,
+            requiresReturn
         });
     }
     handleCancel(); // Reset the form after saving
@@ -149,6 +152,20 @@ const MeasurementPanel: React.FC<{
                 <label htmlFor="endPoleNotes" className="block text-sm font-medium text-gray-300 mb-1">{t('poleNotes')}</label>
                 <textarea id="endPoleNotes" value={endPoleNotes} onChange={(e) => setEndPoleNotes(e.target.value)} rows={2} className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white" placeholder={t('poleNotesPlaceholder')}></textarea>
             </div>
+             <div className="pt-2">
+                <div className="flex items-center p-3 rounded-md bg-red-900/30 border border-red-800/50">
+                    <input
+                        id="requiresReturn"
+                        type="checkbox"
+                        checked={requiresReturn}
+                        onChange={(e) => setRequiresReturn(e.target.checked)}
+                        className="h-5 w-5 rounded border-gray-500 bg-gray-700 text-red-500 focus:ring-red-600"
+                    />
+                    <label htmlFor="requiresReturn" className="ml-3 block text-sm text-red-300 font-bold">
+                        {t('requiresReturn')}
+                    </label>
+                </div>
+            </div>
         </div>
 
         <div className="flex justify-end space-x-4">
@@ -171,6 +188,42 @@ const PausedPanel: React.FC<{ onResume: () => void }> = ({ onResume }) => {
             >
                 {t('resumeJob')}
             </button>
+        </div>
+    );
+};
+
+const ReturnVisitList: React.FC<{ segments: Segment[], hasInitialPole: boolean }> = ({ segments, hasInitialPole }) => {
+    const { t } = useTranslations();
+    const returnSegments = segments.filter(s => s.requiresReturn);
+
+    if (returnSegments.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="bg-red-900/30 border border-red-700 p-4 rounded-lg shadow-xl space-y-4">
+            <h3 className="text-xl font-bold text-red-200">{t('returnVisitTitle')}</h3>
+            <div className="space-y-3">
+                {returnSegments.map((segment, index) => {
+                    const poleNumber = segments.indexOf(segment) + (hasInitialPole ? 2 : 1);
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${segment.end.lat},${segment.end.lon}`;
+                    return (
+                        <div key={segment.id} className="bg-gray-800 p-3 rounded-md">
+                            <h4 className="font-bold text-white">{t('pole')} {poleNumber}</h4>
+                            <p className="text-sm text-gray-300 my-1"><span className="font-semibold">{t('returnVisitReason')}:</span> {segment.endPoleNotes || t('noNotes')}</p>
+                            <p className="text-xs text-gray-400 font-mono">{t('returnVisitLocation')}: {segment.end.lat.toFixed(5)}, {segment.end.lon.toFixed(5)}</p>
+                             <a 
+                                href={mapUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-block mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-md text-sm"
+                            >
+                                {t('goToMap')}
+                            </a>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };
@@ -219,6 +272,8 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName,
              <span className="font-bold text-gray-300 text-lg">{poleCount} {poleCount === 1 ? t('pole') : t('poles')}</span>
         </div>
       </div>
+
+      <ReturnVisitList segments={segments} hasInitialPole={!!job.initialPole} />
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
         {renderContentPanel()}
