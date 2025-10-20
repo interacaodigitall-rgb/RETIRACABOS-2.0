@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Segment, Coordinates, CableType, Job } from './types';
 import { calculateDistance } from './utils/geolocation';
@@ -13,6 +14,7 @@ const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
 const SegmentFormModal = lazy(() => import('./components/SegmentFormModal'));
 const StartJobModal = lazy(() => import('./components/StartJobModal'));
 const EndJobModal = lazy(() => import('./components/EndJobModal'));
+const DistanceMeter = lazy(() => import('./components/DistanceMeter'));
 
 const Header: React.FC<{ user: User | null; onLogout: () => void; onBack: () => void; showBackButton: boolean }> = ({ user, onLogout, onBack, showBackButton }) => {
   const { t } = useTranslations();
@@ -101,7 +103,7 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
     const completedJobs = jobs.filter(j => j.status === 'concluido');
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h2 className="text-3xl font-bold text-white">Meus Trabalhos</h2>
                 <button onClick={onNew} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-lg transition-transform transform hover:scale-105 w-full sm:w-auto">
@@ -472,7 +474,12 @@ function AppContent() {
         {!user ? (
             <AuthComponent />
         ) : !activeJob ? (
-            <JobListComponent jobs={jobs} onSelect={selectJob} onNew={() => setIsStartJobModalVisible(true)} />
+            <div className="max-w-4xl mx-auto space-y-8">
+                <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl">Carregando medidor...</div>}>
+                    <DistanceMeter />
+                </Suspense>
+                <JobListComponent jobs={jobs} onSelect={selectJob} onNew={() => setIsStartJobModalVisible(true)} />
+            </div>
         ) : (
           <>
             <JobDashboard 

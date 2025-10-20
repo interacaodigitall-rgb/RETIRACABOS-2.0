@@ -1,4 +1,5 @@
 
+
 export default {
   "appName": "RetiraCabo 2.0",
   "welcomeTitle": "Bem-vindo ao RetiraCabo",
@@ -77,5 +78,16 @@ export default {
   "endJobConfirmation": "O que você gostaria de fazer a seguir?",
   "confirmEndJobAndReturn": "Concluir e Voltar à Lista",
   "confirmEndJobAndNew": "Concluir e Iniciar Outro",
-  "openInteractiveMap": "Abrir mapa interativo"
+  "openInteractiveMap": "Abrir mapa interativo",
+  "distanceMeterTitle": "Medidor de Distância Ponto a Ponto",
+  "markPointA": "Marcar Ponto A",
+  "markPointB": "Marcar Ponto B",
+  "resetMeasurement": "Limpar Medição",
+  "pointA": "Ponto A",
+  "pointB": "Ponto B",
+  "pointMarkedAt": "Marcado às {time}",
+  "measurementResult": "Resultado da Medição",
+  "distanceResultLabel": "Distância",
+  "elapsedTime": "Tempo Decorrido",
+  "seconds": "segundos"
 };
