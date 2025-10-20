@@ -91,11 +91,35 @@ const AuthComponent: React.FC = () => {
     )
 }
 
+const JobCard: React.FC<{ job: Job; onSelect: (job: Job) => void; className?: string }> = ({ job, onSelect, className = '' }) => {
+    const { t } = useTranslations();
+    const isCompleted = job.status === 'concluido';
+    const titleColor = isCompleted && !job.hasPendingReturns ? 'text-gray-400' : 'text-white';
+  
+    return (
+      <div onClick={() => onSelect(job)} className={`bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors ${className}`}>
+        <div className="flex justify-between items-start">
+          <h3 className={`text-xl font-bold truncate pr-4 ${titleColor}`} title={job.nome}>{job.nome}</h3>
+          {job.hasPendingReturns && (
+            <div className="flex-shrink-0" title={t('returnRequiredTooltip')}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+          )}
+        </div>
+        <p className="text-gray-400 mt-1">Total: {job.totalMetros.toFixed(2)}m</p>
+        <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
+      </div>
+    );
+};
+
 const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, onNew: () => void }> = ({ jobs, onSelect, onNew }) => {
     const { t } = useTranslations();
     const activeJobs = jobs.filter(j => j.status === 'ativo');
     const pausedJobs = jobs.filter(j => j.status === 'pausado');
-    const completedJobs = jobs.filter(j => j.status === 'concluido');
+    const pendingReturnCompletedJobs = jobs.filter(j => j.status === 'concluido' && j.hasPendingReturns);
+    const normalCompletedJobs = jobs.filter(j => j.status === 'concluido' && !j.hasPendingReturns);
 
     return (
         <div>
@@ -107,17 +131,27 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
             </div>
 
             <div className="space-y-8">
+                {pendingReturnCompletedJobs.length > 0 && (
+                     <div>
+                        <h3 className="text-2xl font-semibold text-red-400 border-b-2 border-gray-700 pb-2 mb-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {t('pendingReturnsTitle')}
+                        </h3>
+                        <div className="space-y-4">
+                            {pendingReturnCompletedJobs.map(job => (
+                                <JobCard key={job.id} job={job} onSelect={onSelect} className="border-l-4 border-red-500" />
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
                 <div>
                     <h3 className="text-2xl font-semibold text-blue-400 border-b-2 border-gray-700 pb-2 mb-4">Ativos</h3>
                     {activeJobs.length > 0 ? (
                         <div className="space-y-4">
-                            {activeJobs.map(job => (
-                                <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors">
-                                    <h3 className="text-xl font-bold text-white truncate" title={job.nome}>{job.nome}</h3>
-                                    <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
-                                    <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
-                                </div>
-                            ))}
+                            {activeJobs.map(job => <JobCard key={job.id} job={job} onSelect={onSelect} />)}
                         </div>
                     ) : (
                         <p className="text-gray-500">Nenhum trabalho ativo.</p>
@@ -128,13 +162,7 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
                     <h3 className="text-2xl font-semibold text-amber-400 border-b-2 border-gray-700 pb-2 mb-4">{t('pausedJobs')}</h3>
                     {pausedJobs.length > 0 ? (
                         <div className="space-y-4">
-                            {pausedJobs.map(job => (
-                                <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors border-l-4 border-amber-500">
-                                    <h3 className="text-xl font-bold text-white truncate" title={job.nome}>{job.nome}</h3>
-                                    <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
-                                    <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
-                                </div>
-                            ))}
+                            {pausedJobs.map(job => <JobCard key={job.id} job={job} onSelect={onSelect} className="border-l-4 border-amber-500" />)}
                         </div>
                     ) : (
                         <p className="text-gray-500">Nenhum trabalho pausado.</p>
@@ -143,18 +171,12 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
                 
                 <div>
                     <h3 className="text-2xl font-semibold text-gray-500 border-b-2 border-gray-700 pb-2 mb-4">Concluídos</h3>
-                    {completedJobs.length > 0 ? (
+                    {normalCompletedJobs.length > 0 ? (
                         <div className="space-y-4">
-                            {completedJobs.map(job => (
-                                <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800/70 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors opacity-80">
-                                    <h3 className="text-xl font-bold text-gray-400 truncate" title={job.nome}>{job.nome}</h3>
-                                    <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
-                                    <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
-                                </div>
-                            ))}
+                            {normalCompletedJobs.map(job => <JobCard key={job.id} job={job} onSelect={onSelect} className="opacity-80" />)}
                         </div>
                     ) : (
-                        <p className="text-gray-500">Nenhum trabalho concluído.</p>
+                        <p className="text-gray-500">Nenhum trabalho concluído (sem pendências).</p>
                     )}
                 </div>
             </div>
@@ -294,6 +316,7 @@ function AppContent() {
         dataInicio: serverTimestamp(),
         totalMetros: 0,
         status: 'ativo' as const,
+        hasPendingReturns: false,
     };
     const docRef = await addDoc(collection(db, 'trabalhos'), newJobData);
     selectJob({ ...newJobData, id: docRef.id, dataInicio: { toDate: () => new Date() } } as Job);
@@ -331,7 +354,11 @@ function AppContent() {
       const cableLengthForSegment = distance * formData.quantity;
       const newTotal = activeJob.totalMetros + cableLengthForSegment;
       
-      batch.update(jobRef, { totalMetros: newTotal });
+      const updateData: { totalMetros: number, hasPendingReturns?: boolean } = { totalMetros: newTotal };
+      if (formData.requiresReturn && !activeJob.hasPendingReturns) {
+        updateData.hasPendingReturns = true;
+      }
+      batch.update(jobRef, updateData);
 
       await batch.commit();
 

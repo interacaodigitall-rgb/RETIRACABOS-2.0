@@ -85,5 +85,7 @@ export default {
   "returnVisitTitle": "Postes Marcados para Retorno",
   "returnVisitReason": "Motivo",
   "returnVisitLocation": "Localização",
-  "goToMap": "Ir para o Mapa"
+  "goToMap": "Ir para o Mapa",
+  "pendingReturnsTitle": "Concluídos com Retorno Pendente",
+  "returnRequiredTooltip": "Este trabalho possui postes que necessitam de retorno."
 };

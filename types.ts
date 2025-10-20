@@ -34,4 +34,5 @@ export interface Job {
     coordinates: Coordinates;
     notes: string;
   };
+  hasPendingReturns?: boolean;
 }
