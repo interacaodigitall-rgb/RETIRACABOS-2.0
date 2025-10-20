@@ -1,26 +1,168 @@
-
-import React from 'react';
-import { Segment, Coordinates, Job } from '../types';
+import React, { useState } from 'react';
+import { Segment, Coordinates, Job, CableType } from '../types';
 import { SegmentList } from './SegmentList';
 import { MapDisplay } from './MapDisplay';
 import { useTranslations } from '../contexts/TranslationsContext';
+import { calculateDistance } from '../utils/geolocation';
 
 interface JobDashboardProps {
   job: Job;
   technicianName: string;
-  onAddPole: () => void;
   onEndJob: () => void;
   segments: Segment[];
   lastPole: Coordinates | null;
+  onSaveSegment: (start: Coordinates, end: Coordinates, distance: number, data: { cableType: CableType, quantity: number, notes: string, endPoleNotes: string }) => void;
+  onSaveInitialPole: (coords: Coordinates, notes: string) => void;
 }
 
-export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName, onAddPole, onEndJob, segments, lastPole }) => {
+const MeasurementPanel: React.FC<{
+  lastPole: Coordinates | null,
+  onSaveSegment: JobDashboardProps['onSaveSegment'],
+  onSaveInitialPole: JobDashboardProps['onSaveInitialPole']
+}> = ({ lastPole, onSaveSegment, onSaveInitialPole }) => {
   const { t } = useTranslations();
- 
-  const handleAddPoleClick = () => {
-    onAddPole();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // State for measurement result
+  const [nextPoleCoords, setNextPoleCoords] = useState<Coordinates | null>(null);
+  const [measuredDistance, setMeasuredDistance] = useState<number | null>(null);
+
+  // State for the form
+  const [cableType, setCableType] = useState<CableType>(CableType.Simple);
+  const [quantity, setQuantity] = useState(1);
+  const [notes, setNotes] = useState('');
+  const [endPoleNotes, setEndPoleNotes] = useState('');
+
+  const cableTypeOptions = [
+    { value: CableType.Simple, label: t('cableTypeSimple') },
+    { value: CableType.Double, label: t('cableTypeDouble') },
+    { value: CableType.Other, label: t('cableTypeOther') },
+  ];
+
+  const handleMeasure = () => {
+    setIsLoading(true);
+    setError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newCoords = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        };
+        setNextPoleCoords(newCoords);
+        if (lastPole) {
+          const distance = calculateDistance(lastPole.lat, lastPole.lon, newCoords.lat, newCoords.lon);
+          setMeasuredDistance(distance);
+        }
+        setIsLoading(false);
+      },
+      (err) => {
+        setError(t('gpsUnavailable'));
+        setIsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
   };
   
+  const handleCancel = () => {
+    setNextPoleCoords(null);
+    setMeasuredDistance(null);
+    setError('');
+    // Reset form
+    setCableType(CableType.Simple);
+    setQuantity(1);
+    setNotes('');
+    setEndPoleNotes('');
+  };
+
+  const handleSave = () => {
+    if (!lastPole && nextPoleCoords) { // This is the initial pole
+        onSaveInitialPole(nextPoleCoords, endPoleNotes);
+    } else if (lastPole && nextPoleCoords && measuredDistance !== null) { // This is a new segment
+        let finalQuantity = 1;
+        if (cableType === CableType.Double) finalQuantity = 2;
+        else if (cableType === CableType.Other) finalQuantity = quantity;
+        
+        onSaveSegment(lastPole, nextPoleCoords, measuredDistance, {
+            cableType,
+            quantity: finalQuantity,
+            notes,
+            endPoleNotes
+        });
+    }
+    handleCancel(); // Reset the form after saving
+  };
+
+  if (!nextPoleCoords) { // Initial state: Button to measure
+    return (
+      <div className="text-center">
+        <h3 className="text-xl font-bold text-white mb-4">{lastPole ? t('routePlanning') : t('addInitialPoleTitle')}</h3>
+        {lastPole && (
+             <div className="text-sm text-gray-400 mb-4">
+                <p>{t('lastPoleLocation')}:</p>
+                <p className="font-mono">Lat: {lastPole.lat.toFixed(6)}, Lon: {lastPole.lon.toFixed(6)}</p>
+            </div>
+        )}
+        <button onClick={handleMeasure} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300 w-full sm:w-auto">
+            {isLoading ? t('measuring') : (lastPole ? t('measureToNextPole') : t('markInitialPole'))}
+        </button>
+        {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+      </div>
+    );
+  }
+
+  // Second state: Show result and form
+  return (
+    <div className="space-y-4">
+        {measuredDistance !== null && (
+             <div className="text-center p-3 bg-gray-900 rounded-lg">
+                <h4 className="text-sm uppercase text-gray-400">{t('measuredDistance')}</h4>
+                <p className="text-3xl font-bold text-blue-400">{measuredDistance.toFixed(2)} <span className="text-lg">{t('meters')}</span></p>
+            </div>
+        )}
+
+        <div className="bg-gray-700/50 p-4 rounded-lg space-y-4">
+            <h3 className="text-lg font-semibold text-white">{lastPole ? t('segmentDetails') : t('initialPoleDetails')}</h3>
+            {lastPole && (
+                 <div>
+                    <label htmlFor="cableType" className="block text-sm font-medium text-gray-300 mb-1">{t('cableType')}</label>
+                    <select id="cableType" value={cableType} onChange={(e) => setCableType(e.target.value as CableType)} className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white">
+                    {cableTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                </div>
+            )}
+            {lastPole && cableType === CableType.Other && (
+                <div>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-300 mb-1">{t('quantity')}</label>
+                    <input type="number" id="quantity" value={quantity} onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} min="1" className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white" />
+                </div>
+            )}
+             {lastPole && (
+                <div>
+                    <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">{t('notes')}</label>
+                    <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white" placeholder={t('notesPlaceholder')}></textarea>
+                </div>
+             )}
+             <div>
+                <label htmlFor="endPoleNotes" className="block text-sm font-medium text-gray-300 mb-1">{t('poleNotes')}</label>
+                <textarea id="endPoleNotes" value={endPoleNotes} onChange={(e) => setEndPoleNotes(e.target.value)} rows={2} className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white" placeholder={t('poleNotesPlaceholder')}></textarea>
+            </div>
+        </div>
+
+        <div className="flex justify-end space-x-4">
+            <button type="button" onClick={handleCancel} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md">{t('cancel')}</button>
+            <button type="button" onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md">{t('save')}</button>
+        </div>
+    </div>
+  )
+
+}
+
+
+export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName, onEndJob, segments, lastPole, onSaveSegment, onSaveInitialPole }) => {
+  const { t } = useTranslations();
+ 
   const poleCount = segments.length + (job.initialPole ? 1 : 0);
   const totalDistance = job.totalMetros;
   const isJobActive = job.status === 'ativo';
@@ -48,39 +190,27 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName,
         </div>
       </div>
 
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl text-center">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
         {isJobActive ? (
-          <>
-            <h3 className="text-xl font-bold text-white mb-4">{t('routePlanning')}</h3>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button
-                onClick={handleAddPoleClick}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300 w-full sm:w-auto"
-                >
-                {poleCount > 0 ? t('addNextPole') : t('addInitialPole')}
-                </button>
-                <button
-                onClick={onEndJob}
-                disabled={poleCount === 0}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300 disabled:bg-gray-600 disabled:cursor-not-allowed w-full sm:w-auto"
-                >
-                {t('endJob')}
-                </button>
-            </div>
-          </>
+          <MeasurementPanel lastPole={lastPole} onSaveInitialPole={onSaveInitialPole} onSaveSegment={onSaveSegment} />
         ) : (
             <div className="text-center p-4 bg-green-900/50 border border-green-700 rounded-lg">
                 <h3 className="text-2xl font-bold text-green-300">Trabalho Concluído</h3>
             </div>
         )}
-        
-        {segments.length === 0 && job.initialPole?.notes && (
-          <div className="mt-4 text-left p-3 bg-gray-900 rounded-md">
-            <p className="text-sm font-bold text-gray-400">{t('initialPoleNotes')}:</p>
-            <p className="text-gray-300 italic">"{job.initialPole.notes}"</p>
-          </div>
-        )}
       </div>
+
+       {isJobActive && (
+         <div className="text-center">
+             <button
+                onClick={onEndJob}
+                disabled={poleCount === 0}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                >
+                {t('endJob')}
+            </button>
+         </div>
+       )}
       
       <MapDisplay segments={segments} initialPole={job.initialPole?.coordinates} />
 

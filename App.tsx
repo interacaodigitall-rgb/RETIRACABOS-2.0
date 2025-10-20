@@ -1,9 +1,5 @@
-
-
-
 import React, { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Segment, Coordinates, CableType, Job } from './types';
-import { calculateDistance } from './utils/geolocation';
 import { JobDashboard } from './components/JobDashboard';
 import { TranslationsProvider, useTranslations } from './contexts/TranslationsContext';
 import { auth, db } from './firebase';
@@ -11,10 +7,8 @@ import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEma
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, onSnapshot, writeBatch, orderBy, updateDoc } from 'firebase/firestore';
 
 const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
-const SegmentFormModal = lazy(() => import('./components/SegmentFormModal'));
 const StartJobModal = lazy(() => import('./components/StartJobModal'));
 const EndJobModal = lazy(() => import('./components/EndJobModal'));
-const DistanceMeter = lazy(() => import('./components/DistanceMeter'));
 
 const Header: React.FC<{ user: User | null; onLogout: () => void; onBack: () => void; showBackButton: boolean }> = ({ user, onLogout, onBack, showBackButton }) => {
   const { t } = useTranslations();
@@ -157,93 +151,6 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
     )
 }
 
-const AddPoleModal: React.FC<{ onSave: (coords: Coordinates, notes: string) => void; onCancel: () => void; }> = ({ onSave, onCancel }) => {
-    const { t } = useTranslations();
-    const [coords, setCoords] = useState<Coordinates | null>(null);
-    const [notes, setNotes] = useState('');
-    const [isManual, setIsManual] = useState(false);
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-
-    const handleGetLocation = () => {
-        setIsLoading(true);
-        setError('');
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setCoords({
-                    lat: position.coords.latitude,
-                    lon: position.coords.longitude,
-                });
-                setIsLoading(false);
-                setIsManual(false);
-            },
-            (err) => {
-                setError(t('gpsUnavailable'));
-                setIsLoading(false);
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (coords) {
-            onSave(coords, notes);
-        }
-    };
-    
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md animate-fade-in-up">
-                <h2 className="text-2xl font-bold text-white mb-4">{t('addPoleTitle')}</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="p-4 rounded-lg bg-gray-900">
-                        <button type="button" onClick={handleGetLocation} disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500">
-                            {isLoading ? (
-                                <>
-                                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                {t('gettingLocation')}
-                                </>
-                            ) : (
-                                <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                {t('getCurrentLocation')}
-                                </>
-                            )}
-                        </button>
-                        {error && <p className="text-red-400 text-sm mt-2 text-center">{error}</p>}
-                    </div>
-                    
-                    <div>
-                         <label className="block text-sm font-medium text-gray-400 mb-1">{t('poleNotes')}</label>
-                         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white" placeholder={t('poleNotesPlaceholder')} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400">Latitude</label>
-                            <input type="number" step="any" readOnly={!isManual} value={coords?.lat || ''} onChange={(e) => setCoords(c => ({...c!, lat: parseFloat(e.target.value)}))} className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white read-only:bg-gray-600"/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400">Longitude</label>
-                             <input type="number" step="any" readOnly={!isManual} value={coords?.lon || ''} onChange={(e) => setCoords(c => ({...c!, lon: parseFloat(e.target.value)}))} className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white read-only:bg-gray-600"/>
-                        </div>
-                        <div className="text-right">
-                            <button type="button" onClick={() => setIsManual(!isManual)} className="text-sm text-blue-400 hover:underline">{isManual ? t('lockCoordinates') : t('editManually')}</button>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-4 pt-4">
-                        <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-md transition-colors">{t('cancel')}</button>
-                        <button type="submit" disabled={!coords} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md transition-colors disabled:bg-gray-500">{t('savePole')}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-
 function AppContent() {
   if (!auth || !db) {
     return (
@@ -266,11 +173,8 @@ function AppContent() {
   const [segments, setSegments] = useState<Segment[]>([]);
   
   const [lastPole, setLastPole] = useState<Coordinates | null>(null);
-  const [isFormVisible, setIsFormVisible] = useState(false);
   const [isStartJobModalVisible, setIsStartJobModalVisible] = useState(false);
-  const [isAddPoleModalVisible, setIsAddPoleModalVisible] = useState(false);
   const [isEndJobModalVisible, setIsEndJobModalVisible] = useState(false);
-  const [newSegmentData, setNewSegmentData] = useState<Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -373,46 +277,24 @@ function AppContent() {
     setIsStartJobModalVisible(false);
   }, [user, selectJob]);
 
-  const handleAddSegment = useCallback((startCoords: Coordinates, endCoords: Coordinates, endPoleNotes: string) => {
-    const distance = calculateDistance(startCoords.lat, startCoords.lon, endCoords.lat, endCoords.lon);
-    const newSegData: Omit<Segment, 'id' | 'cableType' | 'quantity' | 'notes'> = {
-      start: startCoords,
-      end: endCoords,
-      distance: distance,
-      endPoleNotes: endPoleNotes,
-      timestamp: new Date().toISOString(),
-    };
-    setNewSegmentData(newSegData);
-    setIsFormVisible(true);
-  }, []);
 
-  const handleSavePole = useCallback(async (coords: Coordinates, notes: string) => {
-    if (lastPole && activeJob) {
-        handleAddSegment(lastPole, coords, notes);
-    } else if (activeJob) {
-        const jobRef = doc(db, 'trabalhos', activeJob.id);
-        const newInitialPole = { coordinates: coords, notes: notes };
-        await updateDoc(jobRef, { initialPole: newInitialPole });
-        // Optimistic update to avoid waiting for listener
-        setActiveJob(prev => prev ? { ...prev, initialPole: newInitialPole } : null);
-        setLastPole(coords);
-    }
-    setIsAddPoleModalVisible(false);
-  }, [lastPole, activeJob, handleAddSegment]);
-
-
-  const handleSaveSegment = useCallback(async (formData: { cableType: CableType; quantity: number; notes: string; }) => {
-    if (newSegmentData && activeJob) {
+  const handleSaveSegment = useCallback(async (
+    startCoords: Coordinates, 
+    endCoords: Coordinates, 
+    distance: number,
+    formData: { cableType: CableType; quantity: number; notes: string; endPoleNotes: string; }
+  ) => {
+    if (activeJob) {
       const segmentToSave = {
-        lat_origem: newSegmentData.start.lat,
-        lng_origem: newSegmentData.start.lon,
-        lat_destino: newSegmentData.end.lat,
-        lng_destino: newSegmentData.end.lon,
-        distancia_m: newSegmentData.distance,
+        lat_origem: startCoords.lat,
+        lng_origem: startCoords.lon,
+        lat_destino: endCoords.lat,
+        lng_destino: endCoords.lon,
+        distancia_m: distance,
         tipo_cabo: formData.cableType,
         quantidade: formData.quantity,
         observacoes: formData.notes,
-        observacoes_poste_final: newSegmentData.endPoleNotes,
+        observacoes_poste_final: formData.endPoleNotes,
         timestamp: serverTimestamp(),
       };
       
@@ -422,24 +304,27 @@ function AppContent() {
       const batch = writeBatch(db);
       batch.set(doc(segmentsRef), segmentToSave);
 
-      const cableLengthForSegment = newSegmentData.distance * formData.quantity;
+      const cableLengthForSegment = distance * formData.quantity;
       const newTotal = activeJob.totalMetros + cableLengthForSegment;
       
       batch.update(jobRef, { totalMetros: newTotal });
 
       await batch.commit();
 
-      setLastPole(newSegmentData.end);
-      
-      setIsFormVisible(false);
-      setNewSegmentData(null);
+      setLastPole(endCoords);
     }
-  }, [newSegmentData, activeJob]);
-
-  const handleCancelForm = useCallback(() => {
-    setIsFormVisible(false);
-    setNewSegmentData(null);
-  }, []);
+  }, [activeJob]);
+  
+  const handleSaveInitialPole = useCallback(async (coords: Coordinates, notes: string) => {
+      if (activeJob) {
+        const jobRef = doc(db, 'trabalhos', activeJob.id);
+        const newInitialPole = { coordinates: coords, notes: notes };
+        await updateDoc(jobRef, { initialPole: newInitialPole });
+        // Optimistic update to avoid waiting for listener
+        setActiveJob(prev => prev ? { ...prev, initialPole: newInitialPole } : null);
+        setLastPole(coords);
+    }
+  }, [activeJob]);
 
   const handleBackToList = useCallback(() => {
     selectJob(null);
@@ -457,7 +342,6 @@ function AppContent() {
       setIsEndJobModalVisible(false);
       selectJob(null);
       if (action === 'finishAndNew') {
-        // Use a short timeout to ensure the UI has time to transition
         setTimeout(() => setIsStartJobModalVisible(true), 100);
       }
     }
@@ -475,9 +359,6 @@ function AppContent() {
             <AuthComponent />
         ) : !activeJob ? (
             <div className="max-w-4xl mx-auto space-y-8">
-                <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl">Carregando medidor...</div>}>
-                    <DistanceMeter />
-                </Suspense>
                 <JobListComponent jobs={jobs} onSelect={selectJob} onNew={() => setIsStartJobModalVisible(true)} />
             </div>
         ) : (
@@ -485,10 +366,11 @@ function AppContent() {
             <JobDashboard 
               job={activeJob}
               technicianName={user.displayName || user.email || 'Técnico'}
-              onAddPole={() => setIsAddPoleModalVisible(true)}
               onEndJob={() => setIsEndJobModalVisible(true)}
               segments={segments}
               lastPole={lastPole}
+              onSaveSegment={handleSaveSegment}
+              onSaveInitialPole={handleSaveInitialPole}
             />
             <Suspense fallback={<div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl mt-8">Carregando...</div>}>
               <ReportGenerator job={activeJob} segments={segments} technicianName={user.displayName || user.email || 'Técnico'} />
@@ -499,16 +381,6 @@ function AppContent() {
       <Suspense fallback={null}>
         {isStartJobModalVisible && (
           <StartJobModal onStart={handleStartJob} onCancel={() => setIsStartJobModalVisible(false)} />
-        )}
-        {isAddPoleModalVisible && (
-            <AddPoleModal onSave={handleSavePole} onCancel={() => setIsAddPoleModalVisible(false)} />
-        )}
-        {isFormVisible && newSegmentData && (
-          <SegmentFormModal
-            segmentData={newSegmentData}
-            onSave={handleSaveSegment}
-            onCancel={handleCancelForm}
-          />
         )}
         {isEndJobModalVisible && (
           <EndJobModal onConfirm={handleEndJob} onCancel={() => setIsEndJobModalVisible(false)} />
