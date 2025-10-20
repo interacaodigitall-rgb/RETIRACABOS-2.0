@@ -76,5 +76,6 @@ export default {
   "endJobTitle": "Finalizar Trabalho?",
   "endJobConfirmation": "O que você gostaria de fazer a seguir?",
   "confirmEndJobAndReturn": "Concluir e Voltar à Lista",
-  "confirmEndJobAndNew": "Concluir e Iniciar Outro"
+  "confirmEndJobAndNew": "Concluir e Iniciar Outro",
+  "openInteractiveMap": "Abrir mapa interativo"
 };

@@ -40,6 +40,18 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ segments, initialPole })
   const pathString = poles.length > 1 ? `&path=color:0x00aaff|weight:4|enc:${encodedPolyline}` : '';
   
   const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=satellite${pathString}${markers}&key=${API_KEY}`;
+
+  let googleMapsUrl = '';
+  if (poles.length > 0) {
+      if (poles.length === 1) {
+          googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${poles[0].lat},${poles[0].lon}`;
+      } else {
+          const origin = `${poles[0].lat},${poles[0].lon}`;
+          const destination = `${poles[poles.length - 1].lat},${poles[poles.length - 1].lon}`;
+          const waypoints = poles.slice(1, -1).map(p => `${p.lat},${p.lon}`).join('|');
+          googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ''}&travelmode=driving`;
+      }
+  }
   
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-xl space-y-4">
@@ -47,6 +59,23 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ segments, initialPole })
       <div className="bg-gray-900 rounded-md overflow-hidden flex justify-center">
         <img src={mapUrl} alt="Map of the job route" className="max-w-full" />
       </div>
+       {googleMapsUrl && (
+          <div className="text-center pt-2">
+              <a 
+                  href={googleMapsUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition-colors"
+                  aria-label={t('openInteractiveMap')}
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                  {t('openInteractiveMap')}
+              </a>
+          </div>
+      )}
       {segments.length > 0 && (
          <div>
             <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 text-center">
