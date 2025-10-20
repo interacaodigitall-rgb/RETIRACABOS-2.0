@@ -94,6 +94,7 @@ const AuthComponent: React.FC = () => {
 const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, onNew: () => void }> = ({ jobs, onSelect, onNew }) => {
     const { t } = useTranslations();
     const activeJobs = jobs.filter(j => j.status === 'ativo');
+    const pausedJobs = jobs.filter(j => j.status === 'pausado');
     const completedJobs = jobs.filter(j => j.status === 'concluido');
 
     return (
@@ -120,6 +121,23 @@ const JobListComponent: React.FC<{ jobs: Job[], onSelect: (job: Job) => void, on
                         </div>
                     ) : (
                         <p className="text-gray-500">Nenhum trabalho ativo.</p>
+                    )}
+                </div>
+
+                <div>
+                    <h3 className="text-2xl font-semibold text-amber-400 border-b-2 border-gray-700 pb-2 mb-4">{t('pausedJobs')}</h3>
+                    {pausedJobs.length > 0 ? (
+                        <div className="space-y-4">
+                            {pausedJobs.map(job => (
+                                <div key={job.id} onClick={() => onSelect(job)} className="bg-gray-800 p-5 rounded-lg shadow-md hover:bg-gray-700 cursor-pointer transition-colors border-l-4 border-amber-500">
+                                    <h3 className="text-xl font-bold text-white truncate" title={job.nome}>{job.nome}</h3>
+                                    <p className="text-gray-400">Total: {job.totalMetros.toFixed(2)}m</p>
+                                    <p className="text-sm text-gray-500">Iniciado em: {job.dataInicio ? new Date(job.dataInicio.toDate()).toLocaleDateString() : 'Pendente'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">Nenhum trabalho pausado.</p>
                     )}
                 </div>
                 
@@ -196,6 +214,10 @@ function AppContent() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const jobsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job))
         .sort((a, b) => {
+          if (a.status === 'ativo' && b.status !== 'ativo') return -1;
+          if (a.status !== 'ativo' && b.status === 'ativo') return 1;
+          if (a.status === 'pausado' && b.status === 'concluido') return -1;
+          if (a.status === 'concluido' && b.status === 'pausado') return 1;
           const timeA = a.dataInicio?.toDate()?.getTime() || 0;
           const timeB = b.dataInicio?.toDate()?.getTime() || 0;
           return timeB - timeA;
@@ -334,6 +356,14 @@ function AppContent() {
     auth.signOut();
     selectJob(null);
   }, [selectJob]);
+  
+  const handleTogglePauseJob = useCallback(async () => {
+    if (activeJob) {
+        const jobRef = doc(db, 'trabalhos', activeJob.id);
+        const newStatus = activeJob.status === 'ativo' ? 'pausado' : 'ativo';
+        await updateDoc(jobRef, { status: newStatus });
+    }
+  }, [activeJob]);
 
   const handleEndJob = useCallback(async (action: 'finish' | 'finishAndNew') => {
     if (activeJob) {
@@ -367,6 +397,7 @@ function AppContent() {
               job={activeJob}
               technicianName={user.displayName || user.email || 'Técnico'}
               onEndJob={() => setIsEndJobModalVisible(true)}
+              onTogglePause={handleTogglePauseJob}
               segments={segments}
               lastPole={lastPole}
               onSaveSegment={handleSaveSegment}

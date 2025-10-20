@@ -74,5 +74,10 @@ export default {
   "measureToNextPole": "Medir até o Próximo Poste",
   "measuring": "Medindo...",
   "lastPoleLocation": "Localização do último poste",
-  "measuredDistance": "Distância Medida"
+  "measuredDistance": "Distância Medida",
+  "pauseJob": "Pausar Trabalho",
+  "resumeJob": "Retomar Trabalho",
+  "jobPaused": "Trabalho Pausado",
+  "jobPausedMessage": "Este trabalho está pausado. Retome para continuar registrando.",
+  "pausedJobs": "Pausados"
 };

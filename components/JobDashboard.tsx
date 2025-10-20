@@ -9,6 +9,7 @@ interface JobDashboardProps {
   job: Job;
   technicianName: string;
   onEndJob: () => void;
+  onTogglePause: () => void;
   segments: Segment[];
   lastPole: Coordinates | null;
   onSaveSegment: (start: Coordinates, end: Coordinates, distance: number, data: { cableType: CableType, quantity: number, notes: string, endPoleNotes: string }) => void;
@@ -156,16 +157,45 @@ const MeasurementPanel: React.FC<{
         </div>
     </div>
   )
-
 }
 
+const PausedPanel: React.FC<{ onResume: () => void }> = ({ onResume }) => {
+    const { t } = useTranslations();
+    return (
+        <div className="text-center p-4 bg-amber-900/50 border border-amber-700 rounded-lg">
+            <h3 className="text-2xl font-bold text-amber-300">{t('jobPaused')}</h3>
+            <p className="text-amber-200 my-4">{t('jobPausedMessage')}</p>
+            <button
+                onClick={onResume}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-xl shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300"
+            >
+                {t('resumeJob')}
+            </button>
+        </div>
+    );
+};
 
-export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName, onEndJob, segments, lastPole, onSaveSegment, onSaveInitialPole }) => {
+
+export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName, onEndJob, onTogglePause, segments, lastPole, onSaveSegment, onSaveInitialPole }) => {
   const { t } = useTranslations();
  
   const poleCount = segments.length + (job.initialPole ? 1 : 0);
   const totalDistance = job.totalMetros;
-  const isJobActive = job.status === 'ativo';
+  
+  const renderContentPanel = () => {
+    switch(job.status) {
+        case 'ativo':
+            return <MeasurementPanel lastPole={lastPole} onSaveInitialPole={onSaveInitialPole} onSaveSegment={onSaveSegment} />;
+        case 'pausado':
+            return <PausedPanel onResume={onTogglePause} />;
+        case 'concluido':
+            return (
+                <div className="text-center p-4 bg-green-900/50 border border-green-700 rounded-lg">
+                    <h3 className="text-2xl font-bold text-green-300">Trabalho Concluído</h3>
+                </div>
+            );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -191,17 +221,17 @@ export const JobDashboard: React.FC<JobDashboardProps> = ({ job, technicianName,
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
-        {isJobActive ? (
-          <MeasurementPanel lastPole={lastPole} onSaveInitialPole={onSaveInitialPole} onSaveSegment={onSaveSegment} />
-        ) : (
-            <div className="text-center p-4 bg-green-900/50 border border-green-700 rounded-lg">
-                <h3 className="text-2xl font-bold text-green-300">Trabalho Concluído</h3>
-            </div>
-        )}
+        {renderContentPanel()}
       </div>
 
-       {isJobActive && (
-         <div className="text-center">
+       {job.status === 'ativo' && (
+         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <button
+                onClick={onTogglePause}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-amber-300"
+            >
+                {t('pauseJob')}
+            </button>
              <button
                 onClick={onEndJob}
                 disabled={poleCount === 0}

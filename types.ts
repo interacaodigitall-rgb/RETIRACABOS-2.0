@@ -26,7 +26,7 @@ export interface Job {
   nome: string;
   totalMetros: number;
   dataInicio: any; // Firestore Timestamp
-  status: 'ativo' | 'concluido';
+  status: 'ativo' | 'concluido' | 'pausado';
   usuarioId: string;
   initialPole?: {
     coordinates: Coordinates;
